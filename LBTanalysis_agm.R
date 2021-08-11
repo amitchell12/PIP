@@ -15,6 +15,7 @@ setwd(dataPath)
 bisectData <- read.csv("LBT_jatos.csv")
 demoData <- read.csv("LBT_qualtrics.csv") 
 
+##### DATA ORGANISATION & FILTERING #####
 #check unique paritcipant IDs
 nlevels(demoData$ResponseId)
 nlevels(bisectData$qualtrics_id)
@@ -49,25 +50,71 @@ ggplot(megaDat, aes(x=response_time_line_mouse_response, fill=trial_type)) +
 # identify trials where response was > the time out
 megaDat$timeout <- as.numeric(megaDat$response_time_line_mouse_response >= 2000)
 
-timeouts <- aggregate(timeout~trial_type*qualtrics_id, mean, data=bisectData)
+timeouts <- aggregate(timeout~trial_type*qualtrics_id, mean, data=megaDat)
 timeouts <- dcast(qualtrics_id~trial_type, value.var = "timeout", data=timeouts)
 
+# justification for these filters?
 timeouts$CATCH_filter <- timeouts$catch < .5
-timeouts$GoH_filter <- timeouts$go > .2
-timeouts$FILTER <- timeouts$CATCH_filter|timeouts$GoH_filter
+timeouts$Go_filter <- timeouts$go > .2
+timeouts$FILTER <- timeouts$CATCH_filter|timeouts$Go_filter
 sum(timeouts$FILTER)
 
 ID_X <- c(ID_X, as.character(timeouts[timeouts$FILTER == TRUE, "qualtrics_id"]))
 
 #exclude participants whole-study-wise
-demoData <- demoData[!(demoData$ResponseId %in% ID_X), ]
-bisectData<- bisectData[!(bisectData$qualtrics_id %in% ID_X), ]
+megaDat <- megaDat[!(megaDat$qualtrics_id %in% ID_X), ]
 
-#recode ID
-bisectData$ID <- factor(as.numeric(bisectData$qualtrics_id))
-bisectData <- bisectData[order(bisectData$ID), ]
-rownames(bisectData) <- NULL
+#recode ID to make more sense :)
+megaDat$ID <- factor(as.numeric(megaDat$qualtrics_id))
+megaDat <- megaDat[order(megaDat$ID), ]
+rownames(megaDat) <- NULL
 
+##### CHECK CALIBRATION #####
+cal <- megaDat[, c(7:24,35:52,87)]
+# calibration values for each participant
+calibDat <- aggregate(.~ID, median, data = cal)
+# melt data for plotting
+calibDat <- melt(calibDat, value.name = 'RESP')
+calibDat$COND <- factor(substr(calibDat$variable, 1, 3))
+# dot locations
+for (var in 1:length(calibDat$variable)){
+  if (isTRUE(calibDat$COND[var] == 'cal')){
+    calibDat$LOC[var] <- substr(calibDat$variable[var], 11, 22)
+  }
+  else {
+    calibDat$LOC[var] <- substr(calibDat$variable[var], 9, 20)
+  }
+}
+# dot axes - x and y
+substrRight <- function(x, n){
+  substr(x, nchar(x)-n+1, nchar(x))
+}
+calibDat$AXIS <- substrRight(calibDat$LOC, 1)
+
+
+#### REACHED HERE - NEED A WAY OF IDENTIFYING LOCATION SO MERGE CAN WORK
+# isolate by axes
+Y_CAL <- calibDat[calibDat$AXIS == 'y' & calibDat$COND == 'cal' ,]
+X_CAL <- calibDat[calibDat$AXIS == 'x' & calibDat$COND == 'cal' ,]
+Y_DOT <- calibDat[calibDat$AXIS == 'y' & calibDat$COND == 'dot' ,]
+X_DOT <- calibDat[calibDat$AXIS == 'x' & calibDat$COND == 'dot' ,]
+names(Y_CAL)[3] <- 'RESP_Y'
+names(X_CAL)[3] <- 'RESP_X'
+names(Y_DOT)[3] <- 'DOT_Y'
+names(X_DOT)[3] <- 'DOT_X'
+
+X <- merge(X_DOT, X_CAL, by = c('ID','AXIS','LOC'))
+Y <- merge(Y_DOT, Y_CAL, by = c('ID','AXIS','LOC'))
+calibDat1 <- merge(X, Y, by = c('ID'))
+
+
+calibDat1$variable <- factor(calibDat1$variable)
+
+# plot
+ggplot(calibDat1) +
+  geom_point(aes(RESP_X, RESP_Y, colour = variable, group = variable))
+
+##### DATA ANALYSIS ####
 #recode P
 #bisectData$P <- (bisectData$cursor_x - bisectData$calib_loc_midy_x)/bisectData$pix_permm
 bisectData$P <- bisectData$cursor_x/bisectData$pix_permm
