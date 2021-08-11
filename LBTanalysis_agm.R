@@ -5,7 +5,13 @@ library(Rmisc)
 library(psych)
 library(tidyverse)
 
-# getting data frames
+# getting data frames - mac
+#bisectData <- read.csv("/Users/alex/OneDrive - University of Edinburgh/Experiments/CuedEWS/Code/LBT_jatos.csv")
+#demoData <- read.csv("/Users/alex/OneDrive - University of Edinburgh/Experiments/CuedEWS/Code/LBT_qualtrics.csv") 
+# getting data frames - windows
+dataPath <- 'C:/Users/amitch17/OneDrive - University of Edinburgh/Experiments/CuedEWS/Data'
+setwd(dataPath)
+
 bisectData <- read.csv("LBT_jatos.csv")
 demoData <- read.csv("LBT_qualtrics.csv") 
 
@@ -16,21 +22,32 @@ nlevels(bisectData$qualtrics_id)
 #how many trials per participant
 ntrials <- aggregate(acc~qualtrics_id, length, data=bisectData)
 
-#make a vector of participants with too manyor too few trials (>175)
+#make a vector of participants with too many or too few trials (>175)
 ID_X <- as.character(ntrials[ntrials$acc>175 | ntrials$acc < 160, "qualtrics_id"])
 
 #exclude participants
 demoData <- demoData[!(demoData$ResponseId %in% ID_X), ]
 bisectData<- bisectData[!(bisectData$qualtrics_id %in% ID_X), ]
 
-#how many catch_trials
-ncatch <- aggregate(acc~qualtrics_id, length, data=bisectData[bisectData$trial_type=="catch", ])
+# merge demographics and bisection data
+names(demoData)[9] <- 'qualtrics_id'
+megaDat <- merge(bisectData, demoData, by = 'qualtrics_id')
+# limit to required columns
+megaDat <- megaDat[, c(1,318,319,10:30,32:34,38,50,52,54,89,118,119,126:143,159:162,
+                       165,166,169,171,173:175,179,204,210,211,214,215,221,222,294,
+                       296:298,320:329)]
 
-ggplot(bisectData, aes(x=response_time_line_mouse_response, fill=trial_type))+geom_histogram(position = "identity", alpha=.5)+
+#how many catch_trials
+ncatch <- aggregate(Q4~qualtrics_id, length, 
+                    data=megaDat[megaDat$trial_type=="catch", ])
+
+# plotting response time to line
+ggplot(megaDat, aes(x=response_time_line_mouse_response, fill=trial_type)) + 
+  geom_histogram(position = "identity", alpha=.5) +
   xlim(c(750,2100))
 
-
-bisectData$timeout <- as.numeric(bisectData$response_time_line_mouse_response >= 2000)
+# identify trials where response was > the time out
+megaDat$timeout <- as.numeric(megaDat$response_time_line_mouse_response >= 2000)
 
 timeouts <- aggregate(timeout~trial_type*qualtrics_id, mean, data=bisectData)
 timeouts <- dcast(qualtrics_id~trial_type, value.var = "timeout", data=timeouts)
