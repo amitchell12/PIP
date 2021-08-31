@@ -16,12 +16,12 @@ library(Rmisc)
 DPath <- '/Users/alex/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
 setwd(DPath) #Data path
 
-EXP <- read.csv('AGM_pilot.csv') #reading in experimental data
+EXP <- read.csv('AGM_pilot1.csv') #reading in experimental data
 #DEMO <- read.csv() #reading in demographic data
 
 ##### DATA WRANGLE #####
 ## WILL NEED EDITING WHEN IT COMES TO REAL DATA
-EXP <- EXP[, c(7,13:14,19,22:23,35,95,112:113,118,123,134,137,150,164,223,225)]
+EXP <- EXP[, c(7,12:47,49:50,55,58:59,111,140,157:159,163,168,179,182,189,195,209,260,277)]
 
 # defining trials
 EXP$trial_type <- factor(EXP$trial_type)
@@ -31,6 +31,9 @@ levels(EXP$trial_type) <- c('catch','no','go')
 CATCH <- EXP[EXP$trial_type == 'catch' ,]
 GO <- EXP[EXP$trial_type == 'go' ,]
 NOGO <- EXP[EXP$trial_type == 'no' ,]
+
+# removing incorrect
+GO <- GO[GO$correct == 1 ,]
 
 # plotting
 GO$sound <- factor(GO$sound)
