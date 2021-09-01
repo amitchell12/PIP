@@ -17,7 +17,7 @@ DPath <- 'C:/Users/amitch17/OneDrive - University of Edinburgh/Experiments/PIPTO
 #DPath <- '/Users/alex/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
 setwd(DPath) #Data path
 
-EXP <- read.csv('Pilot_JATOS.csv') #reading in experimental data
+EXP <- read.csv('AGM_pilot2.csv') #reading in experimental data
 #DEMO <- read.csv() #reading in demographic data
 
 ##### DATA WRANGLE #####
@@ -38,11 +38,11 @@ GO <- GO[GO$correct == 1 ,]
 # plotting
 GO$sound <- factor(GO$sound)
 ggplot(GO) +
-  geom_density(aes(response_time, colour = sound), size = 1) +
-  facet_wrap(~vol)
+  geom_density(aes(response_time_keyboard_response, colour = sound), size = 1)
+  #facet_wrap(~vol)
 
 # summary
-RT_GO <- summarySEwithin(data = GO, measurevar = 'response_time', 
+RT_GO <- summarySEwithin(data = GO, measurevar = 'response_time_keyboard_response', 
                          withinvars = 'sound', betweenvars = 'vol')
 
 
