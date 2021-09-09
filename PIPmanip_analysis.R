@@ -44,5 +44,5 @@ ggplot(GO) +
 # summary
 RT_GO <- summarySEwithin(data = GO, measurevar = 'response_time_keyboard_response', 
                          withinvars = 'sound', betweenvars = 'jatosStudyResultId')
-
+RT_med <- aggregate(response_time_keyboard_response ~ sound*jatosStudyResultId, median, data = GO)
 
