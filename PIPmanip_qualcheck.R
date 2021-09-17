@@ -88,7 +88,6 @@ ggplot(CALPLOT, aes(LOC_X, LOC_Y, colour = DOT, shape = COND)) +
   scale_shape_manual(values = c(1, 3)) +
   facet_wrap(~ID)
 
-###### REACHED HERE IN CODE
 # get data for linear regression
 # group by COND
 CLK <- CALDAT[CALDAT$COND == 'clk' ,]
@@ -98,6 +97,14 @@ names(DOT)[3] <- 'LOC_DOT'
 
 CALFIT <- merge(CLK, DOT, by = c('ID','DOT','AXIS'))
 CALFIT <- CALFIT[, c(1:3,5,8)]
+
+# find and remove all participants with a missing value
+NONA <- aggregate(LOC_CLK~ID, mean, data = CALFIT, na.action = na.omit)
+NONA <- NONA[, 1]
+CALFIT <- CALFIT[CALFIT$ID %in% NONA ,]
+CALFIT$ID <- factor(CALFIT$ID) #resetting levels
+
+test <- aggregate(LOC_CLK~ID, mean, data =CALFIT)
 
 # THEN fit with linear regression below 
 # identify Rsq for each participant and see if fit >.9
@@ -139,7 +146,7 @@ FAIL <- merge(FAIL, CATCH_CK, by = 'ID') #need to state how many they got incorr
 
 
 ## keep only relevant data in df
-GO <- DVDAT[DVDAT$trial_type == 'go' ,]
+GO <- FDAT[FDAT$trial_type == 'go' ,]
 GO <- GO[GO$correct_keyboard_response == 1 ,]
 # plotting
 GO$sound <- factor(GO$sound)
@@ -155,4 +162,10 @@ RT_med <- aggregate(response_time_keyboard_response ~ sound, median, data = GO)
 RT <- aggregate(response_time_keyboard_response ~ sound*ID, median, data = GO)
 RT <- dcast(ID~sound, value.var = 'response_time_keyboard_response', data = RT)
 
+PIPS <- RT[, c(3,4)]
+RT$PIP <- apply((PIPS), 1, median)
+
+RT <- RT[, c(1,2,5)]
+RT <- reshape2::melt(RT, value.name = 'RT')
+RT_med2 <- aggregate(RT ~ variable, median, data = RT)
                 
