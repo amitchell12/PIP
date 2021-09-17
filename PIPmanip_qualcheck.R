@@ -126,7 +126,9 @@ DVDAT <- DVDAT[!(DVDAT$ID %in% ID_X), ]
 Nfilt <- count(DVDAT, 'ID')
 
 # identify PIDs of participants who did & didnot not pass QC
-PASS <- aggregate(correct~ID*PROLIFIC_PID, mean, data = DVDAT)
+PASS <- aggregate(correct~ID*PROLIFIC_PID*X1.1, mean, data = DVDAT)
+FAIL <- aggregate(correct~ID*PROLIFIC_PID*X1.1, mean, data = FDAT)
+FAIL <- merge(FAIL, CATCH_CK, by = 'ID') #need to state how many they got incorrect
 
 ### not needed but might want to remember how to do this
 # one participant with missing data - y2 (middle), find
@@ -137,7 +139,6 @@ PASS <- aggregate(correct~ID*PROLIFIC_PID, mean, data = DVDAT)
 
 
 ## keep only relevant data in df
-
 GO <- DVDAT[DVDAT$trial_type == 'go' ,]
 GO <- GO[GO$correct_keyboard_response == 1 ,]
 # plotting
@@ -151,3 +152,7 @@ RT_GO <- summarySEwithin(data = GO, measurevar = 'response_time_keyboard_respons
                          withinvars = 'sound')
 RT_med <- aggregate(response_time_keyboard_response ~ sound, median, data = GO)
 
+RT <- aggregate(response_time_keyboard_response ~ sound*ID, median, data = GO)
+RT <- dcast(ID~sound, value.var = 'response_time_keyboard_response', data = RT)
+
+                
