@@ -11,10 +11,11 @@ library(pwr)
 library(reshape2)
 library(ggpubr)
 library(Rmisc)
+library(lme4)
 
 # getting files
-#DPath <- 'C:/Users/amitch17/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
-DPath <- '/Users/alex/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
+DPath <- 'C:/Users/amitch17/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
+#DPath <- '/Users/alex/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
 setwd(DPath) #Data path
 
 EXP <- read.csv('PIPmanip_JATOS.csv') #reading in experimental data
@@ -28,7 +29,8 @@ N <- count(EXP, 'ID')
 # only 23 but all have full number of trials- fab
 
 # check all prolific IDs match
-DEMO$IDCHECK <- ifelse(DEMO$X0.1==DEMO$PROLIFIC_PID,"Yes","No")
+DEMO$IDCHECK <- ifelse(as.character(DEMO$X0.1)==
+                         as.character(DEMO$PROLIFIC_PID),"Yes","No")
 # remove any that = no
 DEMO <- DEMO[DEMO$IDCHECK == 'Yes' ,]
 
@@ -52,15 +54,12 @@ CATCH_CK <- aggregate(correct_keyboard_response~ID*sound, sum, data = CATCH)
 CATCH_CK <- dcast(ID~sound, value.var = "correct_keyboard_response", data=CATCH_CK)
 
 CATCH_CK$GO_FILT <- CATCH_CK$GO < 4
-CATCH_CK$STOP_FILT <- CATCH_CK$STOP < 3
+CATCH_CK$STOP_FILT <- CATCH_CK$STOP < 2
 CATCH_CK$FILTER <- CATCH_CK$GO_FILT|CATCH_CK$STOP_FILT
 
 # make data-frame of participants who failed quality check
 QC_FAIL1 <- CATCH_CK[CATCH_CK$GO_FILT == 'TRUE' | CATCH_CK$STOP_FILT == 'TRUE' ,]
 ID_X <- as.character(CATCH_CK[CATCH_CK$FILT == TRUE, "ID"])
-
-# remove from DVDAT
-DVDAT <- DVDAT[!(DVDAT$ID %in% ID_X), ]
 
 ####### CHECKING CALIB #######
 CAL <- DVDAT[, c(1,13:48)]
@@ -83,30 +82,58 @@ names(YDAT)[3] <- 'LOC_Y'
 CALPLOT <- merge(XDAT, YDAT, by = c('ID','DOT','COND'))
 CALPLOT <- CALPLOT[, c(1:3,5,8)]
 
-
-###### REACHED HERE IN CODE
-## checking fit - HOW DO I DO THIS?
-# melt data for linear regression - use above code but for cal-dot responses instead
-# THEN fit with linear regression below 
-# identify Rsq for each participant and see if fit >.9
-
-for(ID in levels(DVDAT$ID)){
-  model <- lm( ~L+R, data=tmp)
-}
-
 # plot
 ggplot(CALPLOT, aes(LOC_X, LOC_Y, colour = DOT, shape = COND)) +
   geom_point() +
   scale_shape_manual(values = c(1, 3)) +
   facet_wrap(~ID)
 
+###### REACHED HERE IN CODE
+# get data for linear regression
+# group by COND
+CLK <- CALDAT[CALDAT$COND == 'clk' ,]
+DOT <- CALDAT[CALDAT$COND == 'dot' ,]
+names(CLK)[3] <- 'LOC_CLK'
+names(DOT)[3] <- 'LOC_DOT'
+
+CALFIT <- merge(CLK, DOT, by = c('ID','DOT','AXIS'))
+CALFIT <- CALFIT[, c(1:3,5,8)]
+
+# THEN fit with linear regression below 
+# identify Rsq for each participant and see if fit >.9
+
+CAL_CK <- read.csv(text = c('ID,NUMTRIALS,rsq'))
+
+for(ID in levels(CALFIT$ID)){
+    tmp <- CALFIT[CALFIT$ID == ID, c("LOC_CLK","LOC_DOT")]
+    model <- lm(LOC_CLK~LOC_DOT, data=tmp)
+    NUMTRIALS <- nrow(tmp)
+    rsq <- summary(model)$r.squared
+    #add to dataframe
+    CAL_CK <- rbind(CAL_CK, cbind.data.frame(ID,NUMTRIALS,rsq))
+}
+
+## participants whose cal_fit < .9
+CAL_CK$FILTER <- CAL_CK$rsq < .90
+# adding to ID_X data-frame for later removal
+ID_X <- c(ID_X, as.character(CAL_CK[CAL_CK$FILT == TRUE, "ID"]))
+
+###### PP INFO #####
+# create data-frame of failed participants first
+FDAT <- DVDAT[DVDAT$ID %in% ID_X ,]
+# remove all failed participants from DVDAT
+DVDAT <- DVDAT[!(DVDAT$ID %in% ID_X), ]
+Nfilt <- count(DVDAT, 'ID')
+
+# identify PIDs of participants who did & didnot not pass QC
+PASS <- aggregate(correct~ID*PROLIFIC_PID, mean, data = DVDAT)
 
 ### not needed but might want to remember how to do this
 # one participant with missing data - y2 (middle), find
-MISS <- CAL[(is.na(CAL$calib_clk_y2_y)) ,]
-MISS <- MISS[1,1]
+#MISS <- CAL[(is.na(CAL$calib_clk_y2_y)) ,]
+#MISS <- MISS[1,1]
 # add this participant to data-frame of missing IDs
-ID_X <- c(ID_X, MISS)
+#ID_X <- c(ID_X, MISS)
 
 
 ## keep only relevant data in df
