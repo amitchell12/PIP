@@ -14,8 +14,8 @@ library(Rmisc)
 library(lme4)
 
 # getting files
-DPath <- 'C:/Users/amitch17/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
-#DPath <- '/Users/alex/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
+#DPath <- 'C:/Users/amitch17/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
+DPath <- '/Users/alex/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
 setwd(DPath) #Data path
 
 EXP <- read.csv('PIPmanip_JATOS.csv') #reading in experimental data
@@ -144,28 +144,33 @@ FAIL <- merge(FAIL, CATCH_CK, by = 'ID') #need to state how many they got incorr
 # add this participant to data-frame of missing IDs
 #ID_X <- c(ID_X, MISS)
 
-
+###### ANALYSIS ######
+###### adapt this bit of code for main analysis script when have all the data
 ## keep only relevant data in df
-GO <- FDAT[FDAT$trial_type == 'go' ,]
+
+# making data-frame nicer
+colnames(DVDAT)[which(names(DVDAT) == "response_time_keyboard_response")] <- "RT"
+DVDAT$ID <- factor(DVDAT$ID)
+DVDAT$ID <- factor(as.numeric(DVDAT$ID))
+
+# remove catch
+DVDAT <- DVDAT[!DVDAT$trial_type == 'catch' ,]
+# transforming pip3 & pip4 into 1 condition 
+DVDAT$sound <- factor(DVDAT$sound)
+DVDAT$COND <- factor(substr(DVDAT$sound, 1, 1))
+levels(DVDAT$COND) <- c('blank','pip')
+  
+GO <- DVDAT[DVDAT$trial_type == 'go' ,]
 GO <- GO[GO$correct_keyboard_response == 1 ,]
+
 # plotting
-GO$sound <- factor(GO$sound)
 ggplot(GO) +
-  geom_density(aes(response_time_keyboard_response, colour = sound), size = 1) +
+  geom_density(aes(RT, colour = COND), size = 1) +
   facet_wrap(~ID)
 
-# summary
-RT_GO <- summarySEwithin(data = GO, measurevar = 'response_time_keyboard_response', 
-                         withinvars = 'sound')
-RT_med <- aggregate(response_time_keyboard_response ~ sound, median, data = GO)
+# summary stats - medians
+RT_GO <- aggregate(RT ~ COND*ID, median, data = GO)
+RT_GO <- dcast(ID~COND, value.var = 'RT', data = RT_GO)
+write.csv(RT_GO, 'PIPmanip_GOcorrect_RT.csv')
 
-RT <- aggregate(response_time_keyboard_response ~ sound*ID, median, data = GO)
-RT <- dcast(ID~sound, value.var = 'response_time_keyboard_response', data = RT)
-
-PIPS <- RT[, c(3,4)]
-RT$PIP <- apply((PIPS), 1, median)
-
-RT <- RT[, c(1,2,5)]
-RT <- reshape2::melt(RT, value.name = 'RT')
-RT_med2 <- aggregate(RT ~ variable, median, data = RT)
                 
