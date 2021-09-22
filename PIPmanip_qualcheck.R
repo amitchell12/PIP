@@ -101,6 +101,10 @@ CALFIT <- CALFIT[, c(1:3,5,8)]
 # find and remove all participants with a missing value
 NONA <- aggregate(LOC_CLK~ID, mean, data = CALFIT, na.action = na.omit)
 NONA <- NONA[, 1]
+CALNA <- CALFIT[!CALFIT$ID %in% NONA ,]
+CALNA <- dcast(ID~AXIS, value.var = 'LOC_DOT', data = CALNA)
+ID_X <- c(ID_X, as.character(CALNA$ID))
+
 CALFIT <- CALFIT[CALFIT$ID %in% NONA ,]
 CALFIT$ID <- factor(CALFIT$ID) #resetting levels
 
@@ -135,7 +139,7 @@ Nfilt <- count(DVDAT, 'ID')
 # identify PIDs of participants who did & didnot not pass QC
 PASS <- aggregate(correct~ID*PROLIFIC_PID*X1.1, mean, data = DVDAT)
 FAIL <- aggregate(correct~ID*PROLIFIC_PID*X1.1, mean, data = FDAT)
-FAIL <- merge(FAIL, CATCH_CK, by = 'ID') #need to state how many they got incorrect
+
 
 ### not needed but might want to remember how to do this
 # one participant with missing data - y2 (middle), find
