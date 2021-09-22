@@ -12,6 +12,7 @@ library(reshape2)
 library(ggpubr)
 library(Rmisc)
 library(lme4)
+library(effsize)
 
 
 # getting files
@@ -191,4 +192,4 @@ write.csv(RT_GO, 'PIPmanip_GOcorrect_RT.csv', row.names = FALSE)
 
 res <- wilcox.test(RT_GO$blank, RT_GO$pip, paired = TRUE, alternative = "two.sided")
 res #non-sig
-cohen.d(RT_GO1$RT, RT_GO1$COND)
+cohen.d(RT_GO1$RT~RT_GO1$COND)
