@@ -13,6 +13,7 @@ library(ggpubr)
 library(Rmisc)
 library(lme4)
 
+
 # getting files
 #DPath <- 'C:/Users/amitch17/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
 DPath <- '/Users/alex/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
@@ -101,6 +102,7 @@ CALFIT <- CALFIT[, c(1:3,5,8)]
 # find and remove all participants with a missing value
 NONA <- aggregate(LOC_CLK~ID, mean, data = CALFIT, na.action = na.omit)
 NONA <- NONA[, 1]
+# filtering participants with missing data
 CALNA <- CALFIT[!CALFIT$ID %in% NONA ,]
 CALNA <- dcast(ID~AXIS, value.var = 'LOC_DOT', data = CALNA)
 ID_X <- c(ID_X, as.character(CALNA$ID))
@@ -139,7 +141,7 @@ Nfilt <- count(DVDAT, 'ID')
 # identify PIDs of participants who did & didnot not pass QC
 PASS <- aggregate(correct~ID*PROLIFIC_PID*X1.1, mean, data = DVDAT)
 FAIL <- aggregate(correct~ID*PROLIFIC_PID*X1.1, mean, data = FDAT)
-
+FAIL <- merge(FAIL, CATCH_CK, by = 'ID') #need to state how many they got incorrect
 
 ### not needed but might want to remember how to do this
 # one participant with missing data - y2 (middle), find
@@ -151,9 +153,14 @@ FAIL <- aggregate(correct~ID*PROLIFIC_PID*X1.1, mean, data = FDAT)
 ###### ANALYSIS ######
 ###### adapt this bit of code for main analysis script when have all the data
 ## keep only relevant data in df
+DVDAT <- DVDAT[, c(1,8,13:48,51,61,62,74,75,151,168,169,171,174,179,191,201,207,
+                   210,211,221,229,278,296,298,320,321,323)]
 
 # making data-frame nicer
 colnames(DVDAT)[which(names(DVDAT) == "response_time_keyboard_response")] <- "RT"
+colnames(DVDAT)[which(names(DVDAT) == "correct_keyboard_response")] <- "CORR"
+colnames(DVDAT)[which(names(DVDAT) == "X1.1")] <- "GEN"
+colnames(DVDAT)[which(names(DVDAT) == "X1.2")] <- "AGE"
 DVDAT$ID <- factor(DVDAT$ID)
 DVDAT$ID <- factor(as.numeric(DVDAT$ID))
 
@@ -163,9 +170,13 @@ DVDAT <- DVDAT[!DVDAT$trial_type == 'catch' ,]
 DVDAT$sound <- factor(DVDAT$sound)
 DVDAT$COND <- factor(substr(DVDAT$sound, 1, 1))
 levels(DVDAT$COND) <- c('blank','pip')
+
+# reorganise - important vars upfront
+DVDAT <- DVDAT[, c(1,60,61,58,63,48,52,51,40,41,45,2:39,42:44,46,47,49,50,53:57,59,62)]
   
+# analysing 'go' trials
 GO <- DVDAT[DVDAT$trial_type == 'go' ,]
-GO <- GO[GO$correct_keyboard_response == 1 ,]
+GO <- GO[GO$CORR == 1 ,]
 
 # plotting
 ggplot(GO) +
@@ -173,8 +184,10 @@ ggplot(GO) +
   facet_wrap(~ID)
 
 # summary stats - medians
-RT_GO <- aggregate(RT ~ COND*ID, median, data = GO)
-RT_GO <- dcast(ID~COND, value.var = 'RT', data = RT_GO)
+RT_GO1 <- aggregate(RT ~ COND*ID, median, data = GO)
+RT_GO <- dcast(ID~COND, value.var = 'RT', data = RT_GO1)
 write.csv(RT_GO, 'PIPmanip_GOcorrect_RT.csv')
 
-                
+res <- wilcox.test(RT_GO$blank, RT_GO$pip, paired = TRUE, alternative = "two.sided")
+res #non-sig
+cohen.d(RT_GO1$RT, RT_GO1$COND)
