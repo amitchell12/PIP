@@ -16,8 +16,8 @@ library(effsize)
 
 
 # getting files
-#DPath <- 'C:/Users/amitch17/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
-DPath <- '/Users/alex/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
+DPath <- 'C:/Users/amitch17/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
+#DPath <- '/Users/alex/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
 setwd(DPath) #Data path
 
 EXP <- read.csv('PIPmanip_JATOS.csv') #reading in experimental data
@@ -111,7 +111,6 @@ ID_X <- c(ID_X, as.character(CALNA$ID))
 CALFIT <- CALFIT[CALFIT$ID %in% NONA ,]
 CALFIT$ID <- factor(CALFIT$ID) #resetting levels
 
-test <- aggregate(LOC_CLK~ID, mean, data =CALFIT)
 
 # THEN fit with linear regression below 
 # identify Rsq for each participant and see if fit >.9
@@ -183,13 +182,63 @@ GO <- GO[GO$CORR == 1 ,]
 # plotting
 ggplot(GO) +
   geom_density(aes(RT, colour = COND), size = 1) +
-  facet_wrap(~ID)
+  labs(title = 'All trials')
 
 # summary stats - medians
 RT_GO1 <- aggregate(RT ~ COND*ID, median, data = GO)
 RT_GO <- dcast(ID~COND, value.var = 'RT', data = RT_GO1)
+RTstats <- summarySEwithin(RT_GO1, measurevar = 'RT', withinvars = 'COND')
+
 write.csv(RT_GO, 'PIPmanip_GOcorrect_RT.csv', row.names = FALSE)
 
 res <- wilcox.test(RT_GO$blank, RT_GO$pip, paired = TRUE, alternative = "two.sided")
 res #non-sig
-cohen.d(RT_GO1$RT~RT_GO1$COND)
+
+### FIRST 40 TRIALS FOR EACH COND ###
+# to match LBT
+colnames(DVDAT)[which(names(DVDAT) == "count_block_sequence")] <- "COUNT"
+# first extract data-frame for each condition
+BLNK <- DVDAT[DVDAT$COND == 'blank' ,]
+PIP <- DVDAT[DVDAT$COND == 'pip' ,]
+# make sure in right order
+BLNK <- BLNK[with(BLNK, order(ID, COUNT)), ]
+PIP <- PIP[with(PIP, order(ID, COUNT)), ]
+
+# then extract first 40 trials from each condition - use dlpyr
+BLNK40 <-
+  BLNK %>% 
+  group_by(ID) %>% 
+  filter(row_number()<41)
+PIP40 <-
+  PIP %>% 
+  group_by(ID) %>% 
+  filter(row_number()<41)
+# check
+count(BLNK40, 'ID')
+count(PIP40, 'ID')
+# combine
+FIRST40 <- rbind(BLNK40, PIP40)
+
+# get stats - RT
+# analysing 'go' trials
+GO40 <- FIRST40[FIRST40$trial_type == 'go' ,]
+GO40 <- GO40[GO40$CORR == 1 ,]
+
+# summary stats - medians
+RT_GO1 <- aggregate(RT ~ COND*ID, median, data = GO40)
+RT_GO40 <- dcast(ID~COND, value.var = 'RT', data = RT_GO1)
+RT40stats <- summarySEwithin(RT_GO1, measurevar = 'RT', withinvars = 'COND')
+                           
+write.csv(RT_GO, 'PIPmanip_GOcorrect_RT.csv', row.names = FALSE)
+
+res <- wilcox.test(RT_GO40$blank, RT_GO40$pip, paired = TRUE, alternative = "two.sided")
+res #non-sig
+
+ggplot(GO40) +
+  geom_density(aes(RT, colour = COND), size = 1) +
+  labs(title = 'First 40 trials')
+
+# get stats - CORR
+
+
+
