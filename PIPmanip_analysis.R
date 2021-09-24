@@ -16,8 +16,8 @@ library(effsize)
 
 
 # getting files
-DPath <- 'C:/Users/amitch17/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
-#DPath <- '/Users/alex/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
+#DPath <- 'C:/Users/amitch17/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
+DPath <- '/Users/alex/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
 setwd(DPath) #Data path
 
 EXP <- read.csv('PIPmanip_JATOS.csv') #reading in experimental data
@@ -184,6 +184,12 @@ ggplot(GO) +
   geom_density(aes(RT, colour = COND), size = 1) +
   labs(title = 'All trials')
 
+# get stats - CORR
+ACC <- aggregate(CORR ~ COND*ID*trial_type, mean, data = DVDAT)
+ggplot(ACC, aes(trial_type, CORR, colour = COND)) + 
+  geom_violin() +
+  labs(title = 'All trials')
+
 # summary stats - medians
 RT_GO1 <- aggregate(RT ~ COND*ID, median, data = GO)
 RT_GO <- dcast(ID~COND, value.var = 'RT', data = RT_GO1)
@@ -213,6 +219,7 @@ PIP40 <-
   PIP %>% 
   group_by(ID) %>% 
   filter(row_number()<41)
+
 # check
 count(BLNK40, 'ID')
 count(PIP40, 'ID')
@@ -238,7 +245,67 @@ ggplot(GO40) +
   geom_density(aes(RT, colour = COND), size = 1) +
   labs(title = 'First 40 trials')
 
+ggplot(GO40, aes(COND, RT)) + 
+  geom_violin()
+
 # get stats - CORR
+ACC40 <- aggregate(CORR ~ COND*ID*trial_type, mean, data = FIRST40)
+ggplot(ACC40, aes(trial_type, CORR, colour = COND)) + 
+  geom_violin() +
+  labs(title = 'First 40')
 
+## effect size
+RT_GO40$DIFF <- RT_GO40$blank - RT_GO40$pip
+D40 <- mean(RT_GO40$DIFF)/sd(RT_GO40$DIFF)
 
+### MID 40 TRIALS FOR EACH COND ###
+BLNK40 <-
+  BLNK %>% 
+  group_by(ID) %>% 
+  filter(row_number()>41)
+PIP40 <-
+  PIP %>% 
+  group_by(ID) %>% 
+  filter(row_number()>41)
+# then reducing to onnly 40
+BLNK40 <-
+  BLNK40 %>% 
+  group_by(ID) %>% 
+  filter(row_number()<41)
+PIP40 <-
+  PIP40 %>% 
+  group_by(ID) %>% 
+  filter(row_number()<41)
+
+# check
+count(BLNK40, 'ID')
+count(PIP40, 'ID')
+# combine
+MID40 <- rbind(BLNK40, PIP40)
+
+# get stats - RT
+# analysing 'go' trials
+GO240 <- MID40[MID40$trial_type == 'go' ,]
+GO240 <- GO240[GO240$CORR == 1 ,]
+
+# summary stats - medians
+RT_GO1 <- aggregate(RT ~ COND*ID, median, data = GO240)
+RT_GO240 <- dcast(ID~COND, value.var = 'RT', data = RT_GO1)
+RT240stats <- summarySEwithin(RT_GO1, measurevar = 'RT', withinvars = 'COND')
+
+res <- wilcox.test(RT_GO240$blank, RT_GO240$pip, paired = TRUE, alternative = "two.sided")
+res #non-sig
+
+ggplot(GO240) +
+  geom_density(aes(RT, colour = COND), size = 1) +
+  labs(title = 'Mid 40 trials')
+
+ggplot(GO240, aes(COND, RT)) + 
+  geom_violin()
+
+# get stats - CORR
+ACC240 <- aggregate(CORR ~ COND*ID*trial_type, mean, data = MID40)
+ggplot(ACC240, aes(trial_type, CORR, colour = COND)) + 
+  geom_violin() +
+  labs(title = 'First 40')
 
