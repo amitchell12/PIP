@@ -16,8 +16,8 @@ library(effsize)
 
 
 # getting files
-#DPath <- 'C:/Users/amitch17/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
-DPath <- '/Users/alex/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
+DPath <- 'C:/Users/amitch17/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
+#DPath <- '/Users/alex/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
 setwd(DPath) #Data path
 
 EXP <- read.csv('PIPmanip_JATOS.csv') #reading in experimental data
@@ -195,6 +195,7 @@ RT_GO1 <- aggregate(RT ~ COND*ID, median, data = GO)
 RT_GO <- dcast(ID~COND, value.var = 'RT', data = RT_GO1)
 RTstats <- summarySEwithin(RT_GO1, measurevar = 'RT', withinvars = 'COND')
 
+RT_GO$DIFF <- RT_GO$pip - RT_GO$blank
 write.csv(RT_GO, 'PIPmanip_GOcorrect_RT.csv', row.names = FALSE)
 
 res <- wilcox.test(RT_GO$blank, RT_GO$pip, paired = TRUE, alternative = "two.sided")
@@ -235,8 +236,12 @@ GO40 <- GO40[GO40$CORR == 1 ,]
 RT_GO1 <- aggregate(RT ~ COND*ID, median, data = GO40)
 RT_GO40 <- dcast(ID~COND, value.var = 'RT', data = RT_GO1)
 RT40stats <- summarySEwithin(RT_GO1, measurevar = 'RT', withinvars = 'COND')
-                           
-write.csv(RT_GO, 'PIPmanip_GOcorrect_RT.csv', row.names = FALSE)
+   
+## effect size
+RT_GO40$DIFF <- RT_GO40$pip - RT_GO40$blank
+D40 <- mean(RT_GO40$DIFF)/sd(RT_GO40$DIFF)
+
+write.csv(RT_GO40, 'PIPmanip_GOcorrect_RTfirst40.csv', row.names = FALSE)
 
 res <- wilcox.test(RT_GO40$blank, RT_GO40$pip, paired = TRUE, alternative = "two.sided")
 res #non-sig
@@ -254,9 +259,7 @@ ggplot(ACC40, aes(trial_type, CORR, colour = COND)) +
   geom_violin() +
   labs(title = 'First 40')
 
-## effect size
-RT_GO40$DIFF <- RT_GO40$blank - RT_GO40$pip
-D40 <- mean(RT_GO40$DIFF)/sd(RT_GO40$DIFF)
+
 
 ### MID 40 TRIALS FOR EACH COND ###
 BLNK40 <-
