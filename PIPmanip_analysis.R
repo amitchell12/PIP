@@ -16,8 +16,9 @@ library(effsize)
 
 
 # getting files
-DPath <- 'C:/Users/amitch17/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
-#DPath <- '/Users/alex/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
+#DPath <- 'C:/Users/amitch17/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
+DPath <- '/Users/alex/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
+APath <- '/Users/alex/OneDrive - University of Edinburgh/Experiments/PIPTOT/Analysis'
 setwd(DPath) #Data path
 
 EXP <- read.csv('PIPmanip_JATOS.csv') #reading in experimental data
@@ -190,7 +191,8 @@ ggplot(ACC, aes(trial_type, CORR, colour = COND)) +
   geom_violin() +
   labs(title = 'All trials')
 
-# summary stats - medians
+## SUM STATS
+# response time
 RT_GO1 <- aggregate(RT ~ COND*ID, median, data = GO)
 RT_GO <- dcast(ID~COND, value.var = 'RT', data = RT_GO1)
 RTstats <- summarySEwithin(RT_GO1, measurevar = 'RT', withinvars = 'COND')
@@ -200,6 +202,71 @@ write.csv(RT_GO, 'PIPmanip_GOcorrect_RT.csv', row.names = FALSE)
 
 res <- wilcox.test(RT_GO$blank, RT_GO$pip, paired = TRUE, alternative = "two.sided")
 res #non-sig
+# effsize
+ES_RT <- mean(RT_GO$DIFF)/sd(RT_GO$DIFF)
+ES_RT
+
+# accuracy
+
+
+###### PLOTTING ######
+library(raincloudplots)
+library(cowplot)
+library(dplyr)
+library(readr)
+
+gitPath <- '/Users/alex/Documents/GitHub/'
+setwd(gitPath)
+source("RainCloudPlots/tutorial_R/R_rainclouds.R")
+
+# response time - option 1
+RT_SUM <- summarySEwithin(data = RT_GO1, measurevar = 'RT', withinvars = 'COND')
+
+ggplot(RT_GO1, aes(COND, RT, fill = COND, colour = COND)) +
+  geom_flat_violin(aes(fill = COND), position = position_nudge(x = 0.1, y = 0),
+                   adjust = 2, alpha = .5) +
+  geom_point(aes(x = as.numeric(COND)-.15, y = RT, colour = COND),
+             position = position_jitter(width = .1, height = 0), size = .75) +
+  stat_summary(aes(y = RT, group = 1), fun = mean, colour = "black", 
+               position = position_nudge(x = 0.1, y = 0),
+              geom = 'point', shape = 1, size = 4, group = 1) +
+  geom_errorbar(data = RT_SUM, 
+                aes(x = as.numeric(COND)+.1, y = RT, 
+                    ymin = RT-ci, ymax = RT+ci), width = .05, colour = 'black') +
+  theme_classic() + theme(legend.position = 'none') +
+  scale_colour_manual(values = c('grey60', 'grey60')) + 
+  scale_fill_manual(values = c('grey60', 'grey60')) +
+  ylab('Response Time (ms)') + xlab('Condition') + ylim(300,800) -> RTplot1
+
+ggsave('RT_FIG2.png', plot = last_plot(), device = NULL, path = APath, dpi = 300,
+       width = 4, height = 4)
+
+
+# option 2
+ggplot(RT_GO1, aes(COND, RT, fill = COND, colour = COND, group = ID)) +
+  geom_point(aes(x = COND, y = RT, colour = COND),
+             position = position_dodge(.2), size = 1.5) +
+  geom_line(aes(group = ID), alpha = .5, size = 0.7, position = position_dodge(.2)) +
+  stat_summary(aes(y = RT, group = 1), fun = mean, colour = "black", 
+               geom = 'point', shape = 3, stroke = 1, size = 4, group = 1) +
+  theme_classic() + ylim(300,800) +
+  scale_colour_manual(values = c('grey65', 'grey65')) +
+  theme(legend.position = 'none') -> RTplot2
+
+ggsave('RT_FIG2.png', plot = last_plot(), device = NULL, path = APath, dpi = 300,
+       width = 4, height = 4)
+
+# option 3
+ggplot(RT_GO1, aes(COND, RT, fill = COND, colour = COND)) +
+  geom_boxplot(aes(x = as.factor(COND), y = RT), outlier.shape = 1, 
+               alpha = 0.3, width = .1, colour = "BLACK") +
+  theme_classic() + theme(legend.position = 'none') +
+  scale_colour_manual(values = c('grey60', 'grey60')) + 
+  scale_fill_manual(values = c('grey60', 'grey60')) +
+  ylab('Response Time (ms)') + xlab('Condition')
+
+ggsave('RT_FIG.png', plot = last_plot(), device = NULL, path = APath, dpi = 300,
+       width = 4, height = 4)
 
 ### FIRST 40 TRIALS FOR EACH COND ###
 # to match LBT
