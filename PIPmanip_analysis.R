@@ -200,14 +200,38 @@ RTstats <- summarySEwithin(RT_GO1, measurevar = 'RT', withinvars = 'COND')
 RT_GO$DIFF <- RT_GO$pip - RT_GO$blank
 write.csv(RT_GO, 'PIPmanip_GOcorrect_RT.csv', row.names = FALSE)
 
-res <- wilcox.test(RT_GO$blank, RT_GO$pip, paired = TRUE, alternative = "two.sided")
+res <- t.test(RT_GO$blank, RT_GO$pip, paired = TRUE, alternative = "two.sided")
 res #non-sig
+res2 <- wilcox.test(RT_GO$blank, RT_GO$pip,
+            alternative = c("two.sided"),
+            mu = 0, paired = TRUE, exact = FALSE, correct = TRUE,
+            conf.int = TRUE, conf.level = 0.95)
+
 # effsize
-ES_RT <- mean(RT_GO$DIFF)/sd(RT_GO$DIFF)
+ES_RT <- (mean(RT_GO$DIFF))/(sd(RT_GO$DIFF))
 ES_RT
 
 # accuracy
+ACC_W <- dcast(ID~COND*trial_type, value.var = 'CORR', data = ACC)
+ACCstats <- summarySEwithin(ACC, measurevar = 'CORR', withinvars = c('COND', 'trial_type'))
 
+resNO <- wilcox.test(ACC_W$blank_no, ACC_W$pip_no,
+                     alternative = c("two.sided"),
+                     mu = 0, paired = TRUE, exact = FALSE, correct = TRUE,
+                     conf.int = TRUE, conf.level = 0.95)
+resNO
+# effsize
+ES_NO <- (mean(ACC_W$pip_no-ACC_W$blank_no))/(sd(ACC_W$pip_no-ACC_W$blank_no))
+ES_NO
+
+resGO <- wilcox.test(ACC_W$blank_go, ACC_W$pip_go,
+                     alternative = c("two.sided"),
+                     mu = 0, paired = TRUE, exact = FALSE, correct = TRUE,
+                     conf.int = TRUE, conf.level = 0.95)
+resGO
+# effsize
+ES_GO <- (mean(ACC_W$pip_go-ACC_W$blank_go))/(sd(ACC_W$pip_go-ACC_W$blank_go))
+ES_GO
 
 ###### PLOTTING ######
 library(raincloudplots)
