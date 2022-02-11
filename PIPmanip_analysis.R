@@ -17,8 +17,8 @@ library(effsize)
 
 # getting files
 #DPath <- 'C:/Users/amitch17/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
-DPath <- '/Users/alex/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
-APath <- '/Users/alex/OneDrive - University of Edinburgh/Experiments/PIPTOT/Analysis'
+DPath <- '/Users/alex/Documents/Experiments/PIPTOT/Data'
+APath <- '/Users/alex/Documents/Experiments/PIPTOT/Analysis'
 setwd(DPath) #Data path
 
 EXP <- read.csv('PIPmanip_JATOS.csv') #reading in experimental data
