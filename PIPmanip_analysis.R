@@ -16,7 +16,9 @@ library(effsize)
 
 
 # getting files
-#DPath <- 'C:/Users/amitch17/OneDrive - University of Edinburgh/Experiments/PIPTOT/Data'
+## if the folders are in the same path as code, these lines are not needed and should use:
+#DPath <- getwd()
+#APath <- getwd()
 DPath <- '/Users/alex/Documents/Experiments/PIPTOT/Data'
 APath <- '/Users/alex/Documents/Experiments/PIPTOT/Analysis'
 setwd(DPath) #Data path
@@ -291,115 +293,3 @@ ggplot(RT_GO1, aes(COND, RT, fill = COND, colour = COND)) +
 
 ggsave('RT_FIG.png', plot = last_plot(), device = NULL, path = APath, dpi = 300,
        width = 4, height = 4)
-
-### FIRST 40 TRIALS FOR EACH COND ###
-# to match LBT
-colnames(DVDAT)[which(names(DVDAT) == "count_block_sequence")] <- "COUNT"
-# first extract data-frame for each condition
-BLNK <- DVDAT[DVDAT$COND == 'blank' ,]
-PIP <- DVDAT[DVDAT$COND == 'pip' ,]
-# make sure in right order
-BLNK <- BLNK[with(BLNK, order(ID, COUNT)), ]
-PIP <- PIP[with(PIP, order(ID, COUNT)), ]
-
-# then extract first 40 trials from each condition - use dlpyr
-BLNK40 <-
-  BLNK %>% 
-  group_by(ID) %>% 
-  filter(row_number()<41)
-PIP40 <-
-  PIP %>% 
-  group_by(ID) %>% 
-  filter(row_number()<41)
-
-# check
-count(BLNK40, 'ID')
-count(PIP40, 'ID')
-# combine
-FIRST40 <- rbind(BLNK40, PIP40)
-
-# get stats - RT
-# analysing 'go' trials
-GO40 <- FIRST40[FIRST40$trial_type == 'go' ,]
-GO40 <- GO40[GO40$CORR == 1 ,]
-
-# summary stats - medians
-RT_GO1 <- aggregate(RT ~ COND*ID, median, data = GO40)
-RT_GO40 <- dcast(ID~COND, value.var = 'RT', data = RT_GO1)
-RT40stats <- summarySEwithin(RT_GO1, measurevar = 'RT', withinvars = 'COND')
-   
-## effect size
-RT_GO40$DIFF <- RT_GO40$pip - RT_GO40$blank
-D40 <- mean(RT_GO40$DIFF)/sd(RT_GO40$DIFF)
-
-write.csv(RT_GO40, 'PIPmanip_GOcorrect_RTfirst40.csv', row.names = FALSE)
-
-res <- wilcox.test(RT_GO40$blank, RT_GO40$pip, paired = TRUE, alternative = "two.sided")
-res #non-sig
-
-ggplot(GO40) +
-  geom_density(aes(RT, colour = COND), size = 1) +
-  labs(title = 'First 40 trials')
-
-ggplot(GO40, aes(COND, RT)) + 
-  geom_violin()
-
-# get stats - CORR
-ACC40 <- aggregate(CORR ~ COND*ID*trial_type, mean, data = FIRST40)
-ggplot(ACC40, aes(trial_type, CORR, colour = COND)) + 
-  geom_violin() +
-  labs(title = 'First 40')
-
-
-
-### MID 40 TRIALS FOR EACH COND ###
-BLNK40 <-
-  BLNK %>% 
-  group_by(ID) %>% 
-  filter(row_number()>41)
-PIP40 <-
-  PIP %>% 
-  group_by(ID) %>% 
-  filter(row_number()>41)
-# then reducing to onnly 40
-BLNK40 <-
-  BLNK40 %>% 
-  group_by(ID) %>% 
-  filter(row_number()<41)
-PIP40 <-
-  PIP40 %>% 
-  group_by(ID) %>% 
-  filter(row_number()<41)
-
-# check
-count(BLNK40, 'ID')
-count(PIP40, 'ID')
-# combine
-MID40 <- rbind(BLNK40, PIP40)
-
-# get stats - RT
-# analysing 'go' trials
-GO240 <- MID40[MID40$trial_type == 'go' ,]
-GO240 <- GO240[GO240$CORR == 1 ,]
-
-# summary stats - medians
-RT_GO1 <- aggregate(RT ~ COND*ID, median, data = GO240)
-RT_GO240 <- dcast(ID~COND, value.var = 'RT', data = RT_GO1)
-RT240stats <- summarySEwithin(RT_GO1, measurevar = 'RT', withinvars = 'COND')
-
-res <- wilcox.test(RT_GO240$blank, RT_GO240$pip, paired = TRUE, alternative = "two.sided")
-res #non-sig
-
-ggplot(GO240) +
-  geom_density(aes(RT, colour = COND), size = 1) +
-  labs(title = 'Mid 40 trials')
-
-ggplot(GO240, aes(COND, RT)) + 
-  geom_violin()
-
-# get stats - CORR
-ACC240 <- aggregate(CORR ~ COND*ID*trial_type, mean, data = MID40)
-ggplot(ACC240, aes(trial_type, CORR, colour = COND)) + 
-  geom_violin() +
-  labs(title = 'First 40')
-
