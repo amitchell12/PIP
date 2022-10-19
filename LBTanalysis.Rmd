@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
 ```
 
 # Setting paths for raw data and analysis
@@ -14,9 +15,22 @@ knitr::opts_chunk$set(echo = TRUE)
 dPath <- '/Users/au706616/Documents/Experiments/PIPTOT/LBTraw'
 aPath <- '/Users/au706616/Documents/Experiments/PIPTOT/analysis'
 
+datname <- 'LBTraw_first10.csv'
+qualname <- 'QUALraw_first10.csv'
 
+# first only load the raw data because demographic is a little useless at this stage
+bisectData <- read.csv(file.path(dPath,datname)) 
 ```
 
-```{r cars}
-summary(cars)
+# Quick data quality checks
+```{r}
+# filter trials so audio = passed, this removes audio step and filters participants who failed
+bisectData <- dplyr::filter(bisectData, audio_passed == 1)
+# then remove void trials
+bisectData <- dplyr::filter(bisectData, void == 0)
+# number of trials for each participant
+ntrials <- aggregate(acc~jatosStudyResultId, length, data=bisectData)
+
+# check sounds have been recorded 
+bisectMean <- aggregate(bisect_x~sound+jatosStudyResultId, length, data = bisectData)
 ```
