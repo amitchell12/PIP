@@ -1,0 +1,22 @@
+---
+title: "Beyond Bias - Analysis Code"
+author: "A.G. Mitchell"
+date: "2022-10-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Setting paths for raw data and analysis
+```{r}
+dPath <- '/Users/au706616/Documents/Experiments/PIPTOT/LBTraw'
+aPath <- '/Users/au706616/Documents/Experiments/PIPTOT/analysis'
+
+
+```
+
+```{r cars}
+summary(cars)
+```
