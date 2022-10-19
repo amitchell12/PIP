@@ -27,10 +27,27 @@ bisectData <- read.csv(file.path(dPath,datname))
 # filter trials so audio = passed, this removes audio step and filters participants who failed
 bisectData <- dplyr::filter(bisectData, audio_passed == 1)
 # then remove void trials
-bisectData <- dplyr::filter(bisectData, void == 0)
-# number of trials for each participant
-ntrials <- aggregate(acc~jatosStudyResultId, length, data=bisectData)
+bisectData <- dplyr::filter(bisectData, void_trial == 0 & practice == 0)
+# number of trials for each participant - by sound
+ntrials <- aggregate(bisect_x~sound*jatosStudyResultId, length, data=bisectData)
 
-# check sounds have been recorded 
-bisectMean <- aggregate(bisect_x~sound+jatosStudyResultId, length, data = bisectData)
+# remove participant 1073
+bisectData <- filter(bisectData, jatosStudyResultId != '1073')
+
+# check bisection of all lines - first calculate bisection error
+bisectData$bisect_error <- bisectData$bisect_x - bisectData$calib_loc_midy_x
+# convert error into mm
+bisectData$bisect_error <- bisectData$bisect_error/bisectData$pix_permm
+
+# mean bisect error across lines & sounds
+bisectError_sound <- aggregate(bisect_error ~ sound*right_mm*left_mm*jatosStudyResultId, 
+                         mean, data = bisectData)
+# mean bisect error across lines & blocks
+bisectData$block_count <- ifelse(is.na(bisectData$count_block_2_sequence), 1, 2) #identifying block
+bisectError_time <- aggregate(bisect_error ~ block_count*right_mm*left_mm*jatosStudyResultId, 
+                         mean, data = bisectData)
+
+# time of breaks
+bisectData$break_length <- bisectData$time_break_time_stamp - bisectData$time_block_one_end 
+bisectData$break_length <- bisectData$break_length/100 #in seconds
 ```
