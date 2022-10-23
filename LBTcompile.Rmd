@@ -1,5 +1,5 @@
 ---
-title: "Beyond Bias - Analysis Code"
+title: "Beyond Bias - Data Compile code"
 author: "A.G. Mitchell"
 date: "2022-10-19"
 output: html_document
@@ -68,13 +68,31 @@ all_dat <- bisectData[, c(224,11,12,289,211,212,274,275,214,36,37,46,89,164,165,
                           208,216:218,222,228,229,237,251,352,356,319,321,386,388)]
 # data for calibration check, seperate from main df
 calib_dat <- bisectData[, c(224,17:34,172:189,208)]
-
 ```
 
-Organise qualitative data
+# Organise qualitative data
+CHECK THIS STEP WITH FINAL DATASET
 ```{r}
 ## Qualitative data
 # Load and merge with qualitative data
+## Qualitative data
+qualData <- read.csv(file.path(dPath,qualname)) 
+
+# first, some renaming and reorganising of the qual data
+names(qual10Data)[1] <- 'consent'
+names(qual10Data)[2] <- 'prolific_id'
+names(qual10Data)[3] <- 'gender'
+names(qual10Data)[4] <- 'age'
+
+# split off EHI
+EHI <- qualData[, c(2,6:15)]
+qualData <- qualData[, c(2,1,3,4,16)]
+
+# merge with bisection data using jatos IDs to obtain prolific id, to merge data-frames
+dat10 <- merge(qual10Data, dat10, by = 'jatosStudyResultId')
+calib10 <- merge(qual10Data, calib10, by = 'jatosStudyResultId')
+# remove unecessary columns from calib10 - to match other calibration
+calib10 <- calib10[, -c(3,4,5)]
 ```
 
 # Quick data quality checks - first 10 participants
@@ -281,6 +299,12 @@ n <- count(all_dat, 'prolific_id')
 length(n$prolific_id)
 ```
 
+# Saving!
+Save all_dat and calib_dat dataframes
+```{r}
+```
+
+Move the below section to a new code
 # Data wrangling!
 
 ```{r}
