@@ -15,11 +15,12 @@ library(tidyverse)
 dPath <- '/Users/au706616/Documents/Experiments/PIPTOT/LBTraw'
 aPath <- '/Users/au706616/Documents/Experiments/PIPTOT/analysis'
 
-datname <- 'LBTraw.csv'
-#qualname <- 'QUALraw_first10.csv'
+datname <- 'LBTraw_120.csv'
+qualname <- 'QUALraw.csv'
 
-# first only load the raw data because demographic is a little useless at this stage
+# load raw and qual data
 bisectData <- read.csv(file.path(dPath,datname)) 
+qualData <- read.csv(file.path(dPath,qualname)) 
 ```
 
 # Quick data quality checks - main data
@@ -30,14 +31,18 @@ length(nres$prolific_id)
 
 # n particiants removed who failed audio check/too few trials
 nAudio <- dplyr::filter(nres, acc < 200)
-# count void trials
+id_x <- nAudio$prolific_id #identifying participants to be removed
+
+# count void trials - identify excessive
 void <- dplyr::filter(bisectData, void_trial == 1)
 nVoid <- aggregate(void_trial~prolific_id, length, data=void)
 
 compareVoid <- merge(nVoid, nres, by = 'prolific_id')
 
-# remove participants with excessive void trials
-## how to do this??
+# final audio check, correct?
+finalAudio <- bisectData[bisectData$response_audio_kbd_final == 7 ,]
+finalAudio <- finalAudio[, c(225,237)]
+length(finalAudio$queryParams_PROLIFIC_PID)
 
 # filter trials so audio = passed, this removes audio step and filters participants who failed
 bisectData <- dplyr::filter(bisectData, audio_passed == 1)
@@ -47,24 +52,91 @@ bisectData <- dplyr::filter(bisectData, void_trial == 0 & practice == 0)
 ntrials <- aggregate(bisect_x~prolific_id, length, data=bisectData)
 # order by prolific id for easy identification
 ntrials <- ntrials[order(ntrials$prolific_id) ,]
-
 # identify any participants with too few trials (again)
+## ADD THE ABOVE ID_X TO THIS ID_X - AND FIND OUT HOW
+id_x <- append(id_x, ntrials$prolific_id[ntrials$bisect_x < 192]) #fewer than total number of trials
 
-# remove participants with too few trials
-bisectData <- bisectData[]
+# remove participants with too few trials from full data set
+bisectData <- filter(bisectData, !(prolific_id %in% id_x))
+# n remaining participants
+nvalid <- aggregate(bisect_x~prolific_id, length, data=bisectData)
+length(nvalid$prolific_id)
+# narrow down data-frame to relevant columns only - putting important first
+all_dat <- bisectData[, c(224,11,12,289,211,212,274,275,214,36,37,46,89,164,165,206,207,
+                          208,216:218,222,228,229,237,251,352,356,319,321,386,388)]
 
-# narrow down data-frame to relevant columns onle
+# Qualitative data
+# Then merge with qualitative data
 ```
 
 # Quick data quality checks - first 10 participants
+This is slightly different than above because PIDs were not recorded for the first 10
+participants. Have manually matched all JATOS IDs with PIDs
+
+Run the same steps as above on these data
 ```{r}
 # do the same as above for the first 10 participants (collected seperately)
 # then combine their data
+dat10name <- 'LBTraw_first10.csv'
+qual10name <- 'QUALraw_first10.csv'
+
+# first only load the raw data because demographic is a little useless at this stage
+bisect10Data <- read.csv(file.path(dPath,dat10name)) 
+qual10Data <- read.csv(file.path(dPath,qual10name)) 
+
+# same filtering as above
+# first get an idea of all participants (prolific IDs)
+nres10 <- aggregate(acc~jatosStudyResultId, length, data=bisect10Data)
+length(nres10$jatosStudyResultId)
+
+# n particiants removed who failed audio check/too few trials
+nAudio10 <- dplyr::filter(nres10, acc < 200)
+# count void trials
+void10 <- dplyr::filter(bisect10Data, void_trial == 1)
+nVoid10 <- aggregate(void_trial~jatosStudyResultId, length, data=void10)
+# remove participants with excessive void trials
+## how to do this??
+
+# final audio check, correct?
+finalAudio10 <- bisect10Data[bisect10Data$response_audio_kbd_final == 7 ,]
+finalAudio10 <- finalAudio10[, c(224,198)]
+
+# filter trials so audio = passed, this removes audio step and filters participants who failed
+bisect10Data <- dplyr::filter(bisect10Data, audio_passed == 1)
+# then remove void trials
+bisect10Data <- dplyr::filter(bisect10Data, void_trial == 0 & practice == 0)
+# number of trials for each participant with void and practice removed
+ntrials10 <- aggregate(bisect_x~jatosStudyResultId, length, data=bisect10Data)
+
+# narrow down data-frame for correct columns only
+dat10 <- bisect10Data[, c(224,11,12,289,211,212,274,275,214,36,37,46,89,164,165,206,207,
+                          208,216:218,222,228,229,237,251,352,356,319,321,386,388)]
+
+## Qualitative data
+# flag PIDs with no code & no data
+nPID <- c('611e1eee7989eadcee23045c', '6025df3ed83eed206142329a', '6130d846086f43ecd225d128')
+# qualitative data
+# first, some renaming
+names(qual10Data)[2] <- 'prolific_id'
+names(qual10Data)[3] <- 'gender'
+names(qual10Data)[4] <- 'age'
+# remove no code PIDs from quantitative
+qual10Data <- filter(qual10Data, !(prolific_id %in% nPID))
+# add JATOS IDs
+# merge relevant PIDS with jatos IDs, to merge data-frames
+qual10Data$jatosStudyResultId <- ntrials10$jatosStudyResultId
+
+
 ```
 
-# Combine with demographic data
+# Screen calibration
+Check and remove participants where calib and dot locations do not match 
+Criteria:
+
 ```{r}
-# load JISC qual files and then merge with bisection, through prolific id
+# Calibration check
+
+# Get final participant numbers!
 ```
 
 # Data wrangling!
