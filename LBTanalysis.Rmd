@@ -8,6 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(reshape2)
 ```
 
 # Setting paths for raw data and analysis
@@ -165,6 +166,46 @@ calib_dat <- rbind(calib_dat, calib10)
 # check numbers - do they match above
 ncalib <- count(calib_dat, 'prolific_id')
 length(ncalib$prolific_id) # yes, there are 113 prolific ids here
+
+# then aggregate calibration values by id - include na values in this step
+calibDat <- aggregate(.~prolific_id, median, data = calib_dat, na.action = NULL)
+# remove JATOS is
+calibDat <- calibDat[, -c(38)]
+# renaming so convention works for data wrangling & plotting
+setnames(calibDat, 
+         old = c('calib_loc_left192x','calib_loc_left320x', 'calib_loc_left480x',
+                 'calib_loc_lowery', 'calib_loc_midy', 'calib_loc_right192x',
+                 'calib_loc_right320x', 'calib_loc_right480x', 'dot_loc_left192x',
+                 'dot_loc_left320x', 'dot_loc_left480x', 'dot_loc_lowery',
+                 'dot_loc_midy', 'dot_loc_right192x', 'dot_loc_right320x', 
+                 'dot_loc_right480x'), 
+         new = c('calib_loc_left192x_x','calib_loc_left320x_x', 'calib_loc_left480x_x',
+                 'calib_loc_lowery_y', 'calib_loc_midy_y', 'calib_loc_right192x_x',
+                 'calib_loc_right320x_x', 'calib_loc_right480x_x', 'dot_loc_left192x_x',
+                 'dot_loc_left320x_x', 'dot_loc_left480x_x', 'dot_loc_lowery_y',
+                 'dot_loc_midy_y', 'dot_loc_right192x_x', 'dot_loc_right320x_x', 
+                 'dot_loc_right480x_x'))
+
+calibDat <- reshape2::melt(calibDat, value.name = 'RESP') #reshaping dataframe
+# extracting important variables
+calibDat$COND <- factor(substr(calibDat$variable, 1, 3))
+# dot axes - x and y
+substrRight <- function(x, n){
+  substr(x, nchar(x)-n+1, nchar(x))
+}
+calibDat$AXIS <- substrRight(as.character(calibDat$variable), 1)
+# then identify relevant dot locations
+# dot locations
+for (var in 1:length(calibDat$variable)){
+  if (isTRUE(calibDat$COND[var] == 'cal')){
+    calibDat$LOC[var] <- substr(calibDat$variable[var], 11, 
+                                nchar(as.character(calibDat$variable[var]))-2)
+  }
+  else {
+    calibDat$LOC[var] <- substr(calibDat$variable[var], 9, 
+                                nchar(as.character(calibDat$variable[var]))-2)
+  }
+}
 
 ```
 
