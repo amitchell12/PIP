@@ -55,6 +55,7 @@ ntrials <- ntrials[order(ntrials$prolific_id) ,]
 # identify any participants with too few trials (again)
 ## ADD THE ABOVE ID_X TO THIS ID_X - AND FIND OUT HOW
 id_x <- append(id_x, ntrials$prolific_id[ntrials$bisect_x < 192]) #fewer than total number of trials
+id_x <- append(id_x, ntrials$prolific_id[ntrials$bisect_x > 192]) #more than
 
 # remove participants with too few trials from full data set
 bisectData <- filter(bisectData, !(prolific_id %in% id_x))
@@ -64,9 +65,15 @@ length(nvalid$prolific_id)
 # narrow down data-frame to relevant columns only - putting important first
 all_dat <- bisectData[, c(224,11,12,289,211,212,274,275,214,36,37,46,89,164,165,206,207,
                           208,216:218,222,228,229,237,251,352,356,319,321,386,388)]
+# data for calibration check, seperate from main df
+calib_dat <- bisectData[, c(224,17:34,172:189,208)]
 
-# Qualitative data
-# Then merge with qualitative data
+```
+
+Organise qualitative data
+```{r}
+## Qualitative data
+# Load and merge with qualitative data
 ```
 
 # Quick data quality checks - first 10 participants
@@ -82,7 +89,6 @@ qual10name <- 'QUALraw_first10.csv'
 
 # first only load the raw data because demographic is a little useless at this stage
 bisect10Data <- read.csv(file.path(dPath,dat10name)) 
-qual10Data <- read.csv(file.path(dPath,qual10name)) 
 
 # same filtering as above
 # first get an idea of all participants (prolific IDs)
@@ -91,6 +97,7 @@ length(nres10$jatosStudyResultId)
 
 # n particiants removed who failed audio check/too few trials
 nAudio10 <- dplyr::filter(nres10, acc < 200)
+id_x <- nAudio10$jatosStudyResultId #identifying participants to be removed
 # count void trials
 void10 <- dplyr::filter(bisect10Data, void_trial == 1)
 nVoid10 <- aggregate(void_trial~jatosStudyResultId, length, data=void10)
@@ -108,25 +115,43 @@ bisect10Data <- dplyr::filter(bisect10Data, void_trial == 0 & practice == 0)
 # number of trials for each participant with void and practice removed
 ntrials10 <- aggregate(bisect_x~jatosStudyResultId, length, data=bisect10Data)
 
-# narrow down data-frame for correct columns only
-dat10 <- bisect10Data[, c(224,11,12,289,211,212,274,275,214,36,37,46,89,164,165,206,207,
-                          208,216:218,222,228,229,237,251,352,356,319,321,386,388)]
+# remove 1 participant with too few trials
+bisect10Data <- filter(bisect10Data, !(jatosStudyResultId %in% id_x))
 
+# narrow down data-frame for correct columns only
+dat10 <- bisect10Data[, c(11,12,271,201,202,256,257,204,36,37,45,81,154,155,196,197,
+                          198,206:208,212,215,218,219,224,237,326,330,294,296,359,361)]
+calib10 <- bisect10Data[, c(17:34,162:179,198)]
+```
+
+```{r}
 ## Qualitative data
+qual10Data <- read.csv(file.path(dPath,qual10name)) 
 # flag PIDs with no code & no data
 nPID <- c('611e1eee7989eadcee23045c', '6025df3ed83eed206142329a', '6130d846086f43ecd225d128')
 # qualitative data
-# first, some renaming
+# first, some renaming and reorganising of the qual data
+names(qual10Data)[1] <- 'consent'
 names(qual10Data)[2] <- 'prolific_id'
 names(qual10Data)[3] <- 'gender'
 names(qual10Data)[4] <- 'age'
 # remove no code PIDs from quantitative
 qual10Data <- filter(qual10Data, !(prolific_id %in% nPID))
-# add JATOS IDs
-# merge relevant PIDS with jatos IDs, to merge data-frames
-qual10Data$jatosStudyResultId <- ntrials10$jatosStudyResultId
 
+# split off EHI
+EHI10 <- qual10Data[, c(2,6:15)]
+qual10Data <- qual10Data[, c(2,1,3,4,16)]
 
+# merge with bisection data using jatos IDs to obtain prolific id, to merge data-frames
+dat10 <- merge(qual10Data, dat10, by = 'jatosStudyResultId')
+calib10 <- merge(qual10Data, calib10, by = 'jatosStudyResultId')
+# remove unecessary columns from calib10 - to match other calibration
+calib10 <- calib10[, -c(3,4,5)]
+```
+
+# Merge to get final dataset and final numbers!
+```{r}
+# Merge the smaller initial data set with the main data set to get final numbers
 ```
 
 # Screen calibration
@@ -135,8 +160,12 @@ Criteria:
 
 ```{r}
 # Calibration check
+# First bind two calibration files
+calib_dat <- rbind(calib_dat, calib10)
+# check numbers - do they match above
+ncalib <- count(calib_dat, 'prolific_id')
+length(ncalib$prolific_id) # yes, there are 113 prolific ids here
 
-# Get final participant numbers!
 ```
 
 # Data wrangling!
