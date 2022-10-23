@@ -98,7 +98,7 @@ length(nres10$jatosStudyResultId)
 
 # n particiants removed who failed audio check/too few trials
 nAudio10 <- dplyr::filter(nres10, acc < 200)
-id_x <- nAudio10$jatosStudyResultId #identifying participants to be removed
+id_x10 <- nAudio10$jatosStudyResultId #identifying participants to be removed
 # count void trials
 void10 <- dplyr::filter(bisect10Data, void_trial == 1)
 nVoid10 <- aggregate(void_trial~jatosStudyResultId, length, data=void10)
@@ -117,7 +117,7 @@ bisect10Data <- dplyr::filter(bisect10Data, void_trial == 0 & practice == 0)
 ntrials10 <- aggregate(bisect_x~jatosStudyResultId, length, data=bisect10Data)
 
 # remove 1 participant with too few trials
-bisect10Data <- filter(bisect10Data, !(jatosStudyResultId %in% id_x))
+bisect10Data <- filter(bisect10Data, !(jatosStudyResultId %in% id_x10))
 
 # narrow down data-frame for correct columns only
 dat10 <- bisect10Data[, c(11,12,271,201,202,256,257,204,36,37,45,81,154,155,196,197,
@@ -169,44 +169,116 @@ length(ncalib$prolific_id) # yes, there are 113 prolific ids here
 
 # then aggregate calibration values by id - include na values in this step
 calibDat <- aggregate(.~prolific_id, median, data = calib_dat, na.action = NULL)
+# remove participants with all NAs (aka did not complete calib task)
+n_rows <- which(rowSums(is.na(calibDat))>10) 
+n_rows #print out - to identify how many
+calibDat <- calibDat[-n_rows ,]
+
 # remove JATOS is
 calibDat <- calibDat[, -c(38)]
 # renaming so convention works for data wrangling & plotting
-setnames(calibDat, 
-         old = c('calib_loc_left192x','calib_loc_left320x', 'calib_loc_left480x',
-                 'calib_loc_lowery', 'calib_loc_midy', 'calib_loc_right192x',
-                 'calib_loc_right320x', 'calib_loc_right480x', 'dot_loc_left192x',
-                 'dot_loc_left320x', 'dot_loc_left480x', 'dot_loc_lowery',
-                 'dot_loc_midy', 'dot_loc_right192x', 'dot_loc_right320x', 
-                 'dot_loc_right480x'), 
-         new = c('calib_loc_left192x_x','calib_loc_left320x_x', 'calib_loc_left480x_x',
-                 'calib_loc_lowery_y', 'calib_loc_midy_y', 'calib_loc_right192x_x',
-                 'calib_loc_right320x_x', 'calib_loc_right480x_x', 'dot_loc_left192x_x',
-                 'dot_loc_left320x_x', 'dot_loc_left480x_x', 'dot_loc_lowery_y',
-                 'dot_loc_midy_y', 'dot_loc_right192x_x', 'dot_loc_right320x_x', 
-                 'dot_loc_right480x_x'))
-
-calibDat <- reshape2::melt(calibDat, value.name = 'RESP') #reshaping dataframe
+calibDat <- dplyr::rename(
+  calibDat,
+  'calib_loc_left192x_x' = 'calib_loc_left192x',
+  'calib_loc_left320x_x' = 'calib_loc_left320x',
+  'calib_loc_left480x_x' = 'calib_loc_left480x',
+  'calib_loc_lowery_y' = 'calib_loc_lowery',
+  'calib_loc_midy_y' = 'calib_loc_midy',
+  'calib_loc_right192x_x' = 'calib_loc_right192x',
+  'calib_loc_right320x_x' = 'calib_loc_right320x',
+  'calib_loc_right480x_x' = 'calib_loc_right480x',
+  'dot_loc_left192x_x' = 'dot_loc_left192x',
+  'dot_loc_left320x_x' = 'dot_loc_left320x',
+  'dot_loc_left480x_x' = 'dot_loc_left480x',
+  'dot_loc_lowery_y' = 'dot_loc_lowery',
+  'dot_loc_midy_y' = 'dot_loc_midy',
+  'dot_loc_right192x_x' = 'dot_loc_right192x',
+  'dot_loc_right320x_x' = 'dot_loc_right320x',
+  'dot_loc_right480x_x' = 'dot_loc_right480x'
+   )
+              
+calib_points <- reshape2::melt(calibDat, value.name = 'RESP') #reshaping dataframe
 # extracting important variables
-calibDat$COND <- factor(substr(calibDat$variable, 1, 3))
+calib_points$COND <- factor(substr(calib_points$variable, 1, 3))
 # dot axes - x and y
 substrRight <- function(x, n){
   substr(x, nchar(x)-n+1, nchar(x))
 }
-calibDat$AXIS <- substrRight(as.character(calibDat$variable), 1)
+calib_points$AXIS <- substrRight(as.character(calib_points$variable), 1)
 # then identify relevant dot locations
 # dot locations
-for (var in 1:length(calibDat$variable)){
-  if (isTRUE(calibDat$COND[var] == 'cal')){
-    calibDat$LOC[var] <- substr(calibDat$variable[var], 11, 
-                                nchar(as.character(calibDat$variable[var]))-2)
+for (var in 1:length(calib_points$variable)){
+  if (isTRUE(calib_points$COND[var] == 'cal')){
+    calib_points$LOC[var] <- substr(calib_points$variable[var], 11, 
+                                nchar(as.character(calib_points$variable[var]))-2)
   }
   else {
-    calibDat$LOC[var] <- substr(calibDat$variable[var], 9, 
-                                nchar(as.character(calibDat$variable[var]))-2)
+    calib_points$LOC[var] <- substr(calib_points$variable[var], 9, 
+                                nchar(as.character(calib_points$variable[var]))-2)
   }
 }
+# order by prolific id
+calib_points <- calib_points[order(calib_points$prolific_id) ,]
+# code a seperate ID variable
+calib_points$prolific_id <- as.factor(calib_points$prolific_id)
+calib_points$ID <- as.character(as.numeric(calib_points$prolific_id))
+calib_points$ID <- as.factor(calib_points$ID)
 
+# plot x axis
+x_plot <- ggplot(
+  calib_points %>% 
+    filter(AXIS == 'x'), 
+  aes(RESP, 0, colour = LOC, shape = COND)) +
+  geom_point() +
+  scale_shape_manual(values = c(3, 1)) +
+  facet_wrap(~ID)
+# plot y axis
+y_plot <- ggplot(
+  calib_points %>% 
+    filter(AXIS == 'y'), 
+  aes(0, RESP, colour = LOC, shape = COND)) +
+  geom_point() +
+  scale_shape_manual(values = c(3, 1)) +
+  facet_wrap(~ID)
+
+# Regressing calibration values
+# get data for linear regression
+# group by COND
+CLK <- dplyr::filter(calib_points, COND == 'cal')
+DOT <- dplyr::filter(calib_points, COND == 'dot')
+names(CLK)[3] <- 'LOC_CLK'
+names(DOT)[3] <- 'LOC_DOT'
+
+CALFIT <- merge(CLK, DOT, by = c('ID','LOC','AXIS','prolific_id'))
+CALFIT <- CALFIT[, -c(5,7,8,10)]
+
+# THEN fit with linear regression below 
+# identify Rsq for each participant and see if fit >.9
+
+calibR <- read.csv(text = c('prolific_id,NUMTRIALS,RSQ'))
+
+for(prolific_id in levels(CALFIT$prolific_id)){
+    tmp <- CALFIT[CALFIT$prolific_id == prolific_id, c("LOC_CLK","LOC_DOT")]
+    model <- lm(LOC_CLK~LOC_DOT, data=tmp, na.action = na.exclude)
+    NUMTRIALS <- nrow(tmp)
+    RSQ <- summary(model)$r.squared
+    #add to dataframe
+    calibR <- rbind(calibR, cbind.data.frame(prolific_id,NUMTRIALS,RSQ))
+}
+
+# identify and remove participants with r2 < .9
+## participants whose cal_fit < .9
+calibR$FILTER <- calibR$RSQ < .90
+# adding to ID_X data-frame for later removal
+id_x <- c(id_x, as.character(calibR[calibR$FILTER == TRUE, "prolific_id"]))
+length(id_x)
+
+# remove participants who failed calib check from current data-set
+all_dat <- filter(all_dat, !(prolific_id %in% id_x))
+
+# get final numbers
+n <- count(all_dat, 'prolific_id')
+length(n$prolific_id)
 ```
 
 # Data wrangling!
