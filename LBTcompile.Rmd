@@ -9,6 +9,9 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(reshape2)
+library(glmmTMB)
+library(ggplot2)
+library(plyr)
 ```
 
 # Setting paths for raw data and analysis
@@ -43,7 +46,7 @@ dat <- bisectData[, c(224,6,11,12,26,289,211,212,274,275,214,36,37,46,89,164,165
                           208,216:218,222,223,225,228,229,237,251,352,356,319,321,322,386,388,
                       131,385)]
 # data for calibration check, seperate from main df
-calib_dat <- bisectData[, c(224,17:34,172:189,208)]
+calib_dat <- bisectData[, c(224,17:34,172:189,281,287,208)]
 ```
 
 # Organise qualitative data
@@ -99,7 +102,7 @@ void10 <- dplyr::filter(bisect10Data, void_trial == 1)
 dat10 <- bisect10Data[, c(6,11,12,26,271,201,202,256,257,204,36,37,45,81,154,155,196,197,
                           198,206:208,212,213,215,218,219,224,237,326,330,294,296,297,
                           359,361,123,358)]
-calib10 <- bisect10Data[, c(17:34,162:179,198)]
+calib10 <- bisect10Data[, c(17:34,162:179,263,269,198)]
 
 ## Qualitative data
 qual10Data <- read.csv(file.path(dPath,qual10name)) 
@@ -146,7 +149,7 @@ all_dat <- dplyr::filter(all_dat, audio_passed == 1)
 all_dat <- dplyr::filter(all_dat, void_trial == 0 & practice == 0)
 # number of trials for each participant with void and practice removed
 ndat <- aggregate(bisect_x~prolific_id, length, data=bisectData)
-ndat <- ntrials[order(ndat$prolific_id) ,] # order by prolific id for easy identification
+ndat <- ndat[order(ndat$prolific_id) ,] # order by prolific id for easy identification
 # this is the actual number of participants recruited
 length(ndat$prolific_id) 
 
@@ -164,11 +167,23 @@ all_dat$block <- ifelse(is.na(all_dat$count_block_2_sequence), 1, 2) #identifyin
 all_dat$pip <- ifelse(all_dat$sound == 'blank', 0, 1) #if tone == 1
 
 # then bisection error
+# before calculating bisection error check bisect_x and calib_loc_mid make sense
+bisect_check <- aggregate(bisect_x ~ prolific_id*left_mm*right_mm*calib_loc_midy_x, 
+                          mean, data = all_dat)
+# yep that seems to make sense, now convert and do the same
 all_dat$bisect_error <- all_dat$bisect_x - all_dat$calib_loc_midy_x
-# convert error into mm
 all_dat$bisect_error <- all_dat$bisect_error/all_dat$pix_permm
 
-sanity_check <- aggregate(bisect_error ~ pip*block, length, data = all_dat)
+bisect_check <- aggregate(bisect_error ~ prolific_id*left_mm*right_mm, 
+                          mean, data = all_dat)
+bisect_check$offset <- (bisect_check$left_mm + bisect_check$right_mm)/2
+# yes this step makes sense for most people, plot it just incase
+
+ggplot(bisect_check, aes(group = as.factor(offset), colour = as.factor(offset))) +
+  geom_point(aes(bisect_error, y = 0)) +
+  xlim(-75,75) +
+  theme_bw() +
+  facet_wrap(~prolific_id)
 
 # PARTICIPANT REMOVAL
 # there are participants that, for some reason trials have been doubled, remove those
@@ -183,7 +198,11 @@ all_dat <- all_dat %>%
 
 # remove participants with breaks > 5 minutes
 breaks <- aggregate(break_time ~ prolific_id, mean, data = all_dat, na.rm = FALSE)
+length(breaks$prolific_id)
 id_x <- breaks$prolific_id[breaks$break_time > 300] #this step removes 15 participants! 
+
+# finally, remove participants whose bisect error is NA (no midpoint coordinate)
+id_x <- append(id_x, all_dat$prolific_id[is.na(all_dat$bisect_error)])
 
 # final audio check, correct?
 finalAudio <- bisectData[bisectData$response_audio_kbd_final == 7 ,]
@@ -195,7 +214,7 @@ length(finalAudio$queryParams_PROLIFIC_PID)
 # DON'T RUN this step yet - need confirmation
 all_dat_breaks <- filter(all_dat, !(prolific_id %in% id_x))
 # n remaining participants
-nvalid <- aggregate(bisect_x~prolific_id, length, data=all_dat)
+nvalid <- aggregate(bisect_x~prolific_id, length, data=all_dat_breaks)
 length(nvalid$prolific_id)
 ```
 
@@ -209,10 +228,15 @@ Criteria:
 calib_dat <- rbind(calib_dat, calib10)
 # check numbers - do they match above
 ncalib <- count(calib_dat, 'prolific_id')
-length(ncalib$prolific_id) # yes, there are 123 prolific ids here
+length(ncalib$prolific_id) # yes, there are 142 prolific ids here (total we started with)
+
+# only include participants that have been included in all_dat
+calib_dat1 <- filter(calib_dat, (prolific_id %in% all_dat_breaks$prolific_id))
+ncalib <- count(calib_dat1, 'prolific_id')
+length(ncalib$prolific_id) 
 
 # then aggregate calibration values by id - include na values in this step
-calibDat <- aggregate(.~prolific_id, median, data = calib_dat, na.action = NULL)
+calibDat <- aggregate(.~prolific_id, median, data = calib_dat1, na.action = NULL)
 calibDat <- calibDat[order(calibDat$prolific_id) ,] #order, so next step works consistently
 
 # first, identify participants more than 1/2 incomplete calibration steps
@@ -221,11 +245,11 @@ n_rows <- which(rowSums(is.na(calibDat))>9)
 cal_x <- calibDat$prolific_id[n_rows]
 
 # then  participants where mid x = NA, cannot calculate bisection without it
-cal_x <- append(cal_x, calibDat[is.na(calibDat$calib_loc_midy_x), 1])
-length(cal_x) # this gives us 15 IDs (but there may be overlap)
+#cal_x <- append(cal_x, calibDat[is.na(calibDat$calib_loc_midy_x), 1])
+#length(cal_x) # this gives us 15 IDs (but there may be overlap)
 
-# remove JATOS is
-calibDat <- calibDat[, -c(38)]
+# remove JATOS id
+calibDat <- calibDat[, -c(40)]
 # renaming so convention works for data wrangling & plotting
 calibDat <- dplyr::rename(
   calibDat,
@@ -247,7 +271,9 @@ calibDat <- dplyr::rename(
   'dot_loc_right480x_x' = 'dot_loc_right480x'
    )
               
-calib_points <- reshape2::melt(calibDat, value.name = 'RESP') #reshaping dataframe
+calib_points <- reshape2::melt(calibDat, id.vars = c('prolific_id','screen_width','screen_height'),
+                               value.name = 'RESP') #reshaping dataframe
+
 # extracting important variables
 calib_points$COND <- factor(substr(calib_points$variable, 1, 3))
 # dot axes - x and y
@@ -281,7 +307,7 @@ x_plot <- ggplot(
   aes(RESP, 0, colour = LOC, shape = COND)) +
   geom_point() +
   scale_shape_manual(values = c(3, 1)) +
-  facet_wrap(~ID)
+  facet_wrap(~prolific_id)
 # plot y axis
 y_plot <- ggplot(
   calib_points %>% 
@@ -293,18 +319,21 @@ y_plot <- ggplot(
 
 # FIRST - remove the participants with a lot of NAs & mid-NAs
 calib_points <- filter(calib_points, !(prolific_id %in% cal_x))
-# this step removed 11 participants from data-set
+n <- count(calib_points, 'prolific_id')
+length(n$prolific_id)
+# this step removed 9 further participants from data-set
 
 # Regressing calibration values
 # get data for linear regression
 # group by COND
 CLK <- dplyr::filter(calib_points, COND == 'cal')
 DOT <- dplyr::filter(calib_points, COND == 'dot')
-names(CLK)[3] <- 'LOC_CLK'
-names(DOT)[3] <- 'LOC_DOT'
+names(CLK)[5] <- 'LOC_CLK'
+names(DOT)[5] <- 'LOC_DOT'
 
-CALFIT <- merge(CLK, DOT, by = c('ID','LOC','AXIS','prolific_id'))
-CALFIT <- CALFIT[, -c(5,7,8,10)]
+CALFIT <- merge(CLK, DOT, by = c('ID','LOC','AXIS','prolific_id',
+                                 'screen_width','screen_height'))
+#CALFIT <- CALFIT[, -c(5,7,8,10)]
 
 # refit NAs
 # Construct linear model based on non-NA pairs
@@ -319,11 +348,8 @@ CALFIT2 <- CALFIT %>%
 
 # this step is good but it does not change anything - boo
 
-# remove NAs
-#CALFIT2 <- dplyr::filter(CALFIT2, !is.na(LOC_CLK))
+# plot again to see if this improves things
 
-# THEN fit with linear regression below 
-# identify Rsq for each participant and see if fit >.9
 
 calibR <- read.csv(text = c('prolific_id,NUMTRIALS,RSQ'))
 # recode ID
@@ -332,7 +358,8 @@ CALFIT2$ID <- as.character(as.numeric(CALFIT2$prolific_id))
 CALFIT2$ID <- as.factor(CALFIT2$ID)
 
 for(ID in levels(CALFIT2$ID)){
-    tmp <- CALFIT2[CALFIT2$ID == ID, c("LOC_CLK","LOC_DOT",'prolific_id')]
+    tmp <- CALFIT2[CALFIT2$ID == ID,
+                   c("LOC_CLK","LOC_DOT",'prolific_id','screen_width','screen_height')]
     model <- lm(LOC_CLK~LOC_DOT, data=tmp)
     NUMTRIALS <- nrow(tmp)
     RSQ <- summary(model)$r.squared
