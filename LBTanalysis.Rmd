@@ -24,10 +24,8 @@ all_dat <- read.csv(file.path(aPath,fileName))
 all_dat <- dplyr::filter(all_dat, response_time < 3000)
 
 # identify any participants with too few trials, less than 32 per condition
-tone_trials <- aggregate(bisect_error ~ prolific_id*pip, length, data = all_dat)
-block_trials <- aggregate(bisect_error ~ prolific_id*block, length, data = all_dat)
-id_x <- tone_trials$prolific_id[tone_trials$bisect_error < 32]
-id_x <- append(id_x, tone_trials$prolific_id[tone_trials$bisect_error < 32])
+trials <- aggregate(bisect_error ~ prolific_id*pip*block, length, data = all_dat)
+id_x <- trials$prolific_id[trials$bisect_error < 32]
 
 # check all participants have levels of both factors (block and tone)
 nblock <- aggregate(bisect_error ~ block*prolific_id, length, data = all_dat)
@@ -65,37 +63,46 @@ all_dat$R <- all_dat$right_mm
 all_dat$ID <- as.factor(all_dat$ID)
 
 # tone and block recoding
-# recode as factor
-all_dat$block <- ifelse(all_dat$block == 1, 'EARLY', 'LATE')
-all_dat$block <- factor(all_dat$block)
+all_dat$cond[all_dat$block == 1 & all_dat$pip == 0] <- '1' #block early, tone blank
+all_dat$cond[all_dat$block == 1 & all_dat$pip == 1] <- '2' #block early, tone sound
+all_dat$cond[all_dat$block == 2 & all_dat$pip == 0] <- '3' #block late, tone blank
+all_dat$cond[all_dat$block == 2 & all_dat$pip == 1] <- '4' #block late, tone sound
 
-all_dat$tone <- ifelse(all_dat$pip == 0, 'BLANK', 'TONE')
-all_dat$tone <- factor(all_dat$tone)
+all_dat$block <- ifelse(all_dat$block == 1, 'EARLY', 'LATE')
+all_dat$tone <- ifelse(all_dat$pip == 0, 'BLANK', 'SOUND')
+
+# as factors
+all_dat$cond <- as.factor(all_dat$cond)
+all_dat$block <- as.factor(all_dat$block)
+all_dat$tone <- as.factor(all_dat$tone)
 
 # End point weightings analysis
 # TONE
-PIP_DV <- read.csv(text="ID,tone,NUMTRIALS,rsq,k,dPL,dPR")
+EW_DV <- read.csv(text="ID,tone,block,cond,NUMTRIALS,rsq,k,dPL,dPR")
 
 for(ID in levels(all_dat$ID)){
-  for(tone in levels(all_dat$tone)){
-    tmp <- all_dat[all_dat$ID == ID & all_dat$tone==tone, 
+  for(cond in levels(all_dat$cond)){
+    tmp <- all_dat[all_dat$ID == ID & all_dat$cond==cond, 
                    c("bisect_error","pix_permm","P","L","R")]
     model <- lm(P~L+R, data=tmp)
+    #tone = tmp$tone
+    #block = tmp$block
     NUMTRIALS <- nrow(tmp)
     rsq <- summary(model)$r.squared
     k <- as.numeric(coefficients(model)[1])
     dPL <- as.numeric(coefficients(model)[2])
     dPR <- as.numeric(coefficients(model)[3])
+    
     #add to dataframe
-    PIP_DV <- rbind(PIP_DV, cbind.data.frame(ID,tone,NUMTRIALS,rsq,k,dPL,dPR))
+    EW_DV <- rbind(EW_DV, cbind.data.frame(ID,cond,NUMTRIALS,rsq,k,dPL,dPR))
   }
 }
 
 #calculate composites
-PIP_DV$EWB <- PIP_DV$dPR-PIP_DV$dPL
-PIP_DV$EWS <- PIP_DV$dPR+PIP_DV$dPL
+EW_DV$EWB <- EW_DV$dPR-EW_DV$dPL
+EW_DV$EWS <- EW_DV$dPR+EW_DV$dPL
 
-PIP_DV <- PIP_DV %>% 
+EW_DV <- EW_DV %>% 
   rowwise() %>%
   mutate(
     FILT = case_when(rsq < .7 ~ TRUE,
@@ -104,48 +111,45 @@ PIP_DV <- PIP_DV %>%
            ))
 
 # flag ids for removal
-id_filt <- PIP_DV$ID[PIP_DV$FILT == TRUE]
+id_filt <- EW_DV$ID[EW_DV$FILT == TRUE]
 id_filt <- id_filt[!is.na(id_filt)]
 
-# BLOCK
-TOT_DV <- read.csv(text="ID,block,NUMTRIALS,rsq,k,dPL,dPR")
-
-for(ID in levels(all_dat$ID)){
-  for(block in levels(all_dat$block)){
-    tmp <- all_dat[all_dat$ID == ID & all_dat$block==block, 
-                   c("bisect_error","pix_permm","P","L","R")]
-    model <- lm(P~L+R, data=tmp)
-    NUMTRIALS <- nrow(tmp)
-    rsq <- summary(model)$r.squared
-    k <- as.numeric(coefficients(model)[1])
-    dPL <- as.numeric(coefficients(model)[2])
-    dPR <- as.numeric(coefficients(model)[3])
-    #add to dataframe
-    TOT_DV <- rbind(TOT_DV, cbind.data.frame(ID,block,NUMTRIALS,rsq,k,dPL,dPR))
-  }
-}
-
-#calculate composites
-TOT_DV$EWB <- TOT_DV$dPR-TOT_DV$dPL
-TOT_DV$EWS <- TOT_DV$dPR+TOT_DV$dPL
-TOT_DV <- TOT_DV %>% 
-  rowwise() %>%
-  mutate(
-    FILT = case_when(rsq < .7 ~ TRUE,
-               EWB > .5 ~ TRUE,
-               EWS < .5 ~ TRUE
-           ))
-
-# flag ids for removal
-id_filt <- append(id_filt, TOT_DV$ID[TOT_DV$FILT == TRUE])
-id_filt <- id_filt[!is.na(id_filt)]
 
 # calculate final n of participants that can be used (this will be low)
 all_dat <- filter(all_dat, !(ID %in% id_filt))
+EW_DV <- filter(EW_DV, !(ID %in% id_filt))
 final_n <- count(all_dat, 'ID')
 length(final_n$ID)
 ```
 
+# Reliability and distribution checks on data
+```{r}
+# plot EWS distribution
+ggplot(EW_DV, aes(EWB)) +
+  geom_density()
+
+EWSplot <- ggplot(EW_DV, aes(EWS)) +
+  geom_density()
+
+# test re-test
+# cast by block
+EW_DV$block <- ifelse(EW_DV$cond == '1' | EW_DV$cond == '2', 'EARLY', 'LATE')
+
+block1 <- filter(EW_DV, block == 'EARLY')
+names(block1)[8] <- 'EWB_1'
+names(block1)[9] <- 'EWS_1'
+block2 <- filter(EW_DV, block == 'LATE')
+names(block2)[8] <- 'EWB_2'
+names(block2)[9] <- 'EWS_2'
+
+DF <- merge(block1, block2, by = 'ID')
+
+# run test re-test
+
+cor(DF$EWS_1, DF$EWS_2)
+cor(DF$EWB_1, DF$EWB_2)
+
+```
 
 # Analysis across blocks
 # Analysis across tones
