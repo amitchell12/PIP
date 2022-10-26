@@ -29,14 +29,123 @@ block_trials <- aggregate(bisect_error ~ prolific_id*block, length, data = all_d
 id_x <- tone_trials$prolific_id[tone_trials$bisect_error < 32]
 id_x <- append(id_x, tone_trials$prolific_id[tone_trials$bisect_error < 32])
 
+# check all participants have levels of both factors (block and tone)
+nblock <- aggregate(bisect_error ~ block*prolific_id, length, data = all_dat)
+nblock <- nblock %>% 
+  group_by(prolific_id) %>%
+  tally()
+
+ntone <- aggregate(bisect_error ~ pip*prolific_id, length, data = all_dat)
+ntone <- ntone %>% 
+  group_by(prolific_id) %>%
+  tally()
+
+# and remove those that don't
+id_x <- append(id_x, nblock$prolific_id[nblock$n < 2])
+id_x <- append(id_x, ntone$prolific_id[nblock$n < 2])
+
 all_dat <- filter(all_dat, !(prolific_id %in% id_x))
 n <- count(all_dat, 'prolific_id')
 length(n$prolific_id)
+
+# recode ID
+all_dat$prolific_id <- as.factor(all_dat$prolific_id)
+all_dat$ID <- as.character(as.numeric(all_dat$prolific_id))
+all_dat <- all_dat[order(all_dat$ID), ]
+rownames(all_dat) <- NULL
 ```
+
 # ANALYSIS
-First split data sets into PIP and TOT
+End point weightings on both block and tone conditions
+```{r}
+# recode bisection variables
+all_dat$P <- all_dat$bisect_error
+all_dat$L <- all_dat$left_mm
+all_dat$R <- all_dat$right_mm
+all_dat$ID <- as.factor(all_dat$ID)
+
+# tone and block recoding
+# recode as factor
+all_dat$block <- ifelse(all_dat$block == 1, 'EARLY', 'LATE')
+all_dat$block <- factor(all_dat$block)
+
+all_dat$tone <- ifelse(all_dat$pip == 0, 'BLANK', 'TONE')
+all_dat$tone <- factor(all_dat$tone)
 
 # End point weightings analysis
+# TONE
+PIP_DV <- read.csv(text="ID,tone,NUMTRIALS,rsq,k,dPL,dPR")
+
+for(ID in levels(all_dat$ID)){
+  for(tone in levels(all_dat$tone)){
+    tmp <- all_dat[all_dat$ID == ID & all_dat$tone==tone, 
+                   c("bisect_error","pix_permm","P","L","R")]
+    model <- lm(P~L+R, data=tmp)
+    NUMTRIALS <- nrow(tmp)
+    rsq <- summary(model)$r.squared
+    k <- as.numeric(coefficients(model)[1])
+    dPL <- as.numeric(coefficients(model)[2])
+    dPR <- as.numeric(coefficients(model)[3])
+    #add to dataframe
+    PIP_DV <- rbind(PIP_DV, cbind.data.frame(ID,tone,NUMTRIALS,rsq,k,dPL,dPR))
+  }
+}
+
+#calculate composites
+PIP_DV$EWB <- PIP_DV$dPR-PIP_DV$dPL
+PIP_DV$EWS <- PIP_DV$dPR+PIP_DV$dPL
+
+PIP_DV <- PIP_DV %>% 
+  rowwise() %>%
+  mutate(
+    FILT = case_when(rsq < .7 ~ TRUE,
+               EWB > .5 ~ TRUE,
+               EWS < .5 ~ TRUE
+           ))
+
+# flag ids for removal
+id_filt <- PIP_DV$ID[PIP_DV$FILT == TRUE]
+id_filt <- id_filt[!is.na(id_filt)]
+
+# BLOCK
+TOT_DV <- read.csv(text="ID,block,NUMTRIALS,rsq,k,dPL,dPR")
+
+for(ID in levels(all_dat$ID)){
+  for(block in levels(all_dat$block)){
+    tmp <- all_dat[all_dat$ID == ID & all_dat$block==block, 
+                   c("bisect_error","pix_permm","P","L","R")]
+    model <- lm(P~L+R, data=tmp)
+    NUMTRIALS <- nrow(tmp)
+    rsq <- summary(model)$r.squared
+    k <- as.numeric(coefficients(model)[1])
+    dPL <- as.numeric(coefficients(model)[2])
+    dPR <- as.numeric(coefficients(model)[3])
+    #add to dataframe
+    TOT_DV <- rbind(TOT_DV, cbind.data.frame(ID,block,NUMTRIALS,rsq,k,dPL,dPR))
+  }
+}
+
+#calculate composites
+TOT_DV$EWB <- TOT_DV$dPR-TOT_DV$dPL
+TOT_DV$EWS <- TOT_DV$dPR+TOT_DV$dPL
+TOT_DV <- TOT_DV %>% 
+  rowwise() %>%
+  mutate(
+    FILT = case_when(rsq < .7 ~ TRUE,
+               EWB > .5 ~ TRUE,
+               EWS < .5 ~ TRUE
+           ))
+
+# flag ids for removal
+id_filt <- append(id_filt, TOT_DV$ID[TOT_DV$FILT == TRUE])
+id_filt <- id_filt[!is.na(id_filt)]
+
+# calculate final n of participants that can be used (this will be low)
+all_dat <- filter(all_dat, !(ID %in% id_filt))
+final_n <- count(all_dat, 'ID')
+length(final_n$ID)
+```
+
 
 # Analysis across blocks
 # Analysis across tones
