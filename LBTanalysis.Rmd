@@ -1,0 +1,57 @@
+---
+title: "LBT EWS Analysis"
+author: "A.G. Mitchell"
+date: "2022-10-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(reshape2)
+```
+
+# Load data
+```{r}
+aPath <- '/Users/au706616/Documents/Experiments/PIPTOT/analysis/'
+fileName <- 'LBT_compiled-data.csv'
+all_dat <- read.csv(file.path(aPath,fileName)) 
+```
+
+```{r}
+# some more filtering
+# remove trials with response > 3000ms
+all_dat <- dplyr::filter(all_dat, response_time < 3000)
+
+# identify any participants with too few trials, less than 32 per condition
+tone_trials <- aggregate(bisect_error ~ prolific_id*pip, length, data = all_dat)
+block_trials <- aggregate(bisect_error ~ prolific_id*block, length, data = all_dat)
+id_x <- tone_trials$prolific_id[tone_trials$bisect_error < 32]
+id_x <- append(id_x, tone_trials$prolific_id[tone_trials$bisect_error < 32])
+
+all_dat <- filter(all_dat, !(prolific_id %in% id_x))
+n <- count(all_dat, 'prolific_id')
+length(n$prolific_id)
+```
+# ANALYSIS
+First split data sets into PIP and TOT
+
+# End point weightings analysis
+
+# Analysis across blocks
+# Analysis across tones
+
+# Directional bisection error
+
+# Test for pseudoneglect
+
+```{r}
+```
+
+# Further checks
+
+```{r}
+# time of breaks
+bisectData$break_length <- bisectData$time_break_time_stamp - bisectData$time_block_one_end 
+bisectData$break_length <- bisectData$break_length/100 #in seconds
+```

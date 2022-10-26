@@ -14,7 +14,7 @@ library(reshape2)
 # Setting paths for raw data and analysis
 ```{r}
 dPath <- '/Users/au706616/Documents/Experiments/PIPTOT/LBTraw'
-aPath <- '/Users/au706616/Documents/Experiments/PIPTOT/analysis'
+aPath <- '/Users/au706616/Documents/Experiments/PIPTOT/analysis/'
 
 datname <- 'LBTraw_final.csv'
 qualname <- 'QUALraw_final.csv'
@@ -24,7 +24,7 @@ bisectData <- read.csv(file.path(dPath,datname))
 qualData <- read.csv(file.path(dPath,qualname)) 
 ```
 
-# Quick data quality checks - main data
+# Main data load and compile
 ```{r}
 # first get an idea of all participants (prolific IDs)
 nres <- aggregate(acc~prolific_id, length, data=bisectData)
@@ -32,45 +32,21 @@ length(nres$prolific_id)
 
 # n particiants removed who failed audio check/too few trials
 nAudio <- dplyr::filter(nres, acc < 200)
-id_x <- nAudio$prolific_id #identifying participants to be removed
+# id_x <- nAudio$prolific_id #identifying participants to be removed
 
 # count void trials - identify excessive
 void <- dplyr::filter(bisectData, void_trial == 1)
 nVoid <- aggregate(void_trial~prolific_id, length, data=void)
 
-# final audio check, correct?
-finalAudio <- bisectData[bisectData$response_audio_kbd_final == 7 ,]
-finalAudio <- finalAudio[, c(225,237)]
-length(finalAudio$queryParams_PROLIFIC_PID)
-
-# filter trials so audio = passed, this removes audio step and filters participants who failed
-bisectData <- dplyr::filter(bisectData, audio_passed == 1)
-# then remove void trials
-bisectData <- dplyr::filter(bisectData, void_trial == 0 & practice == 0)
-# number of trials for each participant with void and practice removed
-ntrials <- aggregate(bisect_x~prolific_id, length, data=bisectData)
-# order by prolific id for easy identification
-ntrials <- ntrials[order(ntrials$prolific_id) ,]
-# identify any participants with too few trials (again)
-## ADD THE ABOVE ID_X TO THIS ID_X - AND FIND OUT HOW
-id_x <- append(id_x, ntrials$prolific_id[ntrials$bisect_x < 192]) #fewer than total number of trials
-id_x <- append(id_x, ntrials$prolific_id[ntrials$bisect_x > 192]) #more than
-
-# remove participants with too few trials from full data set
-# there are 10 participants removed at this stage
-bisectData <- filter(bisectData, !(prolific_id %in% id_x))
-# n remaining participants
-nvalid <- aggregate(bisect_x~prolific_id, length, data=bisectData)
-length(nvalid$prolific_id)
 # narrow down data-frame to relevant columns only - putting important first
-all_dat <- bisectData[, c(224,11,12,289,211,212,274,275,214,36,37,46,89,164,165,206,207,
-                          208,216:218,222,225,228,229,237,251,352,356,319,321,386,388)]
+dat <- bisectData[, c(224,6,11,12,26,289,211,212,274,275,214,36,37,46,89,164,165,206,207,
+                          208,216:218,222,223,225,228,229,237,251,352,356,319,321,322,386,388,
+                      131,385)]
 # data for calibration check, seperate from main df
 calib_dat <- bisectData[, c(224,17:34,172:189,208)]
 ```
 
 # Organise qualitative data
-CHECK THIS STEP WITH FINAL DATASET
 ```{r}
 ## Qualitative data
 # Load and merge with qualitative data
@@ -88,13 +64,13 @@ EHI <- qualData[, c(2,6:15)]
 qualData <- qualData[, c(2,1,3,4)]
 
 # merge with bisection data using jatos IDs to obtain prolific id, to merge data-frames
-all_dat <- merge(qualData, all_dat, by = 'prolific_id')
+dat <- merge(qualData, dat, by = 'prolific_id')
 calib_dat <- merge(qualData, calib_dat, by = 'prolific_id')
 # remove unecessary columns from calib10 - to match other calibration
 calib_dat <- calib_dat[, -c(2,3,4)]
 ```
 
-# Quick data quality checks - first 10 participants
+# First 10 participants load, compile and add to other data
 This is slightly different than above because PIDs were not recorded for the first 10
 participants. Have manually matched all JATOS IDs with PIDs
 
@@ -115,35 +91,16 @@ length(nres10$jatosStudyResultId)
 
 # n particiants removed who failed audio check/too few trials
 nAudio10 <- dplyr::filter(nres10, acc < 200)
-id_x10 <- nAudio10$jatosStudyResultId #identifying participants to be removed
+#id_x10 <- nAudio10$jatosStudyResultId #identifying participants to be removed
 # count void trials
 void10 <- dplyr::filter(bisect10Data, void_trial == 1)
-nVoid10 <- aggregate(void_trial~jatosStudyResultId, length, data=void10)
-# remove participants with excessive void trials
-## how to do this??
-
-# final audio check, correct?
-finalAudio10 <- bisect10Data[bisect10Data$response_audio_kbd_final == 7 ,]
-finalAudio10 <- finalAudio10[, c(224,198)]
-
-# filter trials so audio = passed, this removes audio step and filters participants who failed
-bisect10Data <- dplyr::filter(bisect10Data, audio_passed == 1)
-# then remove void trials
-bisect10Data <- dplyr::filter(bisect10Data, void_trial == 0 & practice == 0)
-# number of trials for each participant with void and practice removed
-ntrials10 <- aggregate(bisect_x~jatosStudyResultId, length, data=bisect10Data)
-
-# remove 1 participant with too few trials
-bisect10Data <- filter(bisect10Data, !(jatosStudyResultId %in% id_x10))
 
 # narrow down data-frame for correct columns only
-dat10 <- bisect10Data[, c(11,12,271,201,202,256,257,204,36,37,45,81,154,155,196,197,
-                          198,206:208,212,215,218,219,224,237,326,330,294,296,359,361)]
+dat10 <- bisect10Data[, c(6,11,12,26,271,201,202,256,257,204,36,37,45,81,154,155,196,197,
+                          198,206:208,212,213,215,218,219,224,237,326,330,294,296,297,
+                          359,361,123,358)]
 calib10 <- bisect10Data[, c(17:34,162:179,198)]
-```
-So far, 11 participants have been removed from the data
 
-```{r}
 ## Qualitative data
 qual10Data <- read.csv(file.path(dPath,qual10name)) 
 # flag PIDs with no code & no data
@@ -171,9 +128,72 @@ calib10 <- calib10[, -c(3,4,5)]
 # Merge to get final dataset and final numbers!
 ```{r}
 # Bind the smaller initial data set with the main data set to get final numbers
-all_dat <- rbind(all_dat, dat10)
+all_dat <- rbind(dat, dat10)
 # number before calibration step
 nvalid <- count(all_dat, 'prolific_id')
+length(nvalid$prolific_id)
+
+# save entire data-frame (before quality checks)
+wholeFile = paste(aPath, 'LBT_all-compiled-data.csv', sep = '/')
+write.csv(all_dat, wholeFile, row.names = FALSE)
+```
+
+# First data quality checks
+```{r}
+# filter trials so audio = passed, this removes audio step and filters participants who failed
+all_dat <- dplyr::filter(all_dat, audio_passed == 1)
+# then remove void trials
+all_dat <- dplyr::filter(all_dat, void_trial == 0 & practice == 0)
+# number of trials for each participant with void and practice removed
+ntrials <- aggregate(bisect_x~prolific_id, length, data=bisectData)
+ntrials <- ntrials[order(ntrials$prolific_id) ,] # order by prolific id for easy identification
+# this is the actual number of participants recruited
+length(ntrials$prolific_id) 
+
+# define some key criteria
+# extract variables of interest for quality checks
+# first response time to line in ms
+all_dat$response_time <- all_dat$time_cursor_locs - all_dat$time_line 
+# then length of break (in seconds)
+all_dat$break_time <- (all_dat$time_break_time_stamp - all_dat$time_block_one_end)/100
+
+# code conditions of interest - block and tone (pip)
+all_dat$block <- ifelse(is.na(all_dat$count_block_2_sequence), 1, 2) #identifying block
+all_dat$pip <- ifelse(all_dat$sound == 'blank', 0, 1) #if tone == 1
+
+# then bisection error
+all_dat$bisect_error <- all_dat$bisect_x - all_dat$calib_loc_midy_x
+# convert error into mm
+all_dat$bisect_error <- all_dat$bisect_error/all_dat$pix_permm
+
+sanity_check <- aggregate(bisect_error ~ pip*block, length, data = all_dat)
+
+# PARTICIPANT REMOVAL
+# there are participants that, for some reason trials have been doubled, remove those
+# first order by line response count
+all_dat <- all_dat[order(all_dat$count_line_mouse_response) ,]
+# then prolific id
+all_dat <- all_dat[order(all_dat$prolific_id) ,]
+# then remove repeat trials
+all_dat <- all_dat %>% 
+  group_by(prolific_id) %>%
+  distinct(count_line_mouse_response, .keep_all = TRUE)
+
+# remove participants with breaks > 5 minutes
+breaks <- aggregate(break_time ~ prolific_id, mean, data = all_dat, na.rm = FALSE)
+id_x <- breaks$prolific_id[breaks$break_time > 300] #this step removes 15 participants! 
+
+# final audio check, correct?
+finalAudio <- bisectData[bisectData$response_audio_kbd_final == 7 ,]
+finalAudio <- finalAudio[, c(225,237)]
+length(finalAudio$queryParams_PROLIFIC_PID)
+
+# remove participants with long breaks from full data set
+# but keep data frame that reserves these participants, because that is a lot
+# DON'T RUN this step yet - need confirmation
+all_dat_breaks <- filter(all_dat, !(prolific_id %in% id_x))
+# n remaining participants
+nvalid <- aggregate(bisect_x~prolific_id, length, data=all_dat)
 length(nvalid$prolific_id)
 ```
 
@@ -283,20 +303,34 @@ names(DOT)[3] <- 'LOC_DOT'
 
 CALFIT <- merge(CLK, DOT, by = c('ID','LOC','AXIS','prolific_id'))
 CALFIT <- CALFIT[, -c(5,7,8,10)]
+
+# refit NAs
+# Construct linear model based on non-NA pairs
+df2 <- CALFIT %>% filter(!is.na(CALFIT$LOC_CLK))
+fit <- lmList(LOC_CLK ~ LOC_DOT | prolific_id, data = df2) # 
+
+# then predict values into diff data-frame
+CALFIT2 <- CALFIT %>% 
+  mutate(pred = predict(fit, .)) %>%
+  # Replace NA with pred in var1
+  mutate(LOC_CLK = ifelse(is.na(LOC_CLK), pred, LOC_CLK))
+
+# this step is good but it does not change anything - boo
+
 # remove NAs
-CALFIT <- dplyr::filter(CALFIT, !is.na(LOC_CLK))
+#CALFIT2 <- dplyr::filter(CALFIT2, !is.na(LOC_CLK))
 
 # THEN fit with linear regression below 
 # identify Rsq for each participant and see if fit >.9
 
 calibR <- read.csv(text = c('prolific_id,NUMTRIALS,RSQ'))
 # recode ID
-CALFIT <- CALFIT[order(CALFIT$prolific_id) ,]
-CALFIT$ID <- as.character(as.numeric(CALFIT$prolific_id))
-CALFIT$ID <- as.factor(CALFIT$ID)
+CALFIT2 <- CALFIT2[order(CALFIT2$prolific_id) ,]
+CALFIT2$ID <- as.character(as.numeric(CALFIT2$prolific_id))
+CALFIT2$ID <- as.factor(CALFIT2$ID)
 
-for(ID in levels(CALFIT$ID)){
-    tmp <- CALFIT[CALFIT$ID == ID, c("LOC_CLK","LOC_DOT",'prolific_id')]
+for(ID in levels(CALFIT2$ID)){
+    tmp <- CALFIT2[CALFIT2$ID == ID, c("LOC_CLK","LOC_DOT",'prolific_id')]
     model <- lm(LOC_CLK~LOC_DOT, data=tmp)
     NUMTRIALS <- nrow(tmp)
     RSQ <- summary(model)$r.squared
@@ -314,42 +348,26 @@ cal_x <- append(cal_x, as.character(calibR[calibR$FILTER == TRUE, "prolific_id"]
 length(cal_x)
 ```
 
-There are no participants that fail the Calibration stage - after NAs and mid points are removed! Hurrah 
-
 # Remove participants who did not pass calibration step
 Obtain N for analysis (& power)
 ```{r}
 # remove participants who failed calib check from current data-set
-all_dat <- filter(all_dat, !(prolific_id %in% cal_x))
+#all_dat_breaks <- filter(all_dat_breaks, !(prolific_id %in% cal_x))
+all_dat_breaks <- filter(all_dat_breaks, !(prolific_id %in% cal_x))
 
 # get final numbers
-n <- count(all_dat, 'prolific_id')
+n <- count(all_dat_breaks, 'prolific_id')
 length(n$prolific_id)
+
+# recode IDs
+all_dat_breaks$prolific_id <- as.factor(all_dat_breaks$prolific_id)
+all_dat_breaks$ID <- as.character(as.numeric(all_dat_breaks$prolific_id))
 ```
 
 # Saving!
 Save all_dat and calib_dat dataframes
 ```{r}
+compileFile = paste(aPath, 'LBT_compiled-data.csv', sep = '/')
+write.csv(all_dat_breaks, compileFile, row.names = FALSE)
 ```
 
-Move the below section to a new code
-# Data wrangling!
-
-```{r}
-# check bisection of all lines - first calculate bisection error
-bisectData$bisect_error <- bisectData$bisect_x - bisectData$calib_loc_midy_x
-# convert error into mm
-bisectData$bisect_error <- bisectData$bisect_error/bisectData$pix_permm
-
-# mean bisect error across lines & sounds
-bisectError_sound <- aggregate(bisect_error ~ sound*right_mm*left_mm*jatosStudyResultId, 
-                         mean, data = bisectData)
-# mean bisect error across lines & blocks
-bisectData$block_count <- ifelse(is.na(bisectData$count_block_2_sequence), 1, 2) #identifying block
-bisectError_time <- aggregate(bisect_error ~ block_count*right_mm*left_mm*jatosStudyResultId, 
-                         mean, data = bisectData)
-
-# time of breaks
-bisectData$break_length <- bisectData$time_break_time_stamp - bisectData$time_block_one_end 
-bisectData$break_length <- bisectData$break_length/100 #in seconds
-```
