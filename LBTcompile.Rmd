@@ -166,25 +166,6 @@ bt <- aggregate(break_time ~ prolific_id, mean, data = all_dat) # check it makes
 all_dat$block <- ifelse(is.na(all_dat$count_block_2_sequence), 1, 2) #identifying block
 all_dat$pip <- ifelse(all_dat$sound == 'blank', 0, 1) #if tone == 1
 
-# then bisection error
-# before calculating bisection error check bisect_x and calib_loc_mid make sense
-bisect_check <- aggregate(bisect_x ~ prolific_id*left_mm*right_mm*calib_loc_midy_x, 
-                          mean, data = all_dat)
-# yep that seems to make sense, now convert and do the same
-all_dat$bisect_error <- all_dat$bisect_x - all_dat$calib_loc_midy_x
-all_dat$bisect_error <- all_dat$bisect_error/all_dat$pix_permm
-
-bisect_check <- aggregate(bisect_error ~ prolific_id*left_mm*right_mm, 
-                          mean, data = all_dat)
-bisect_check$offset <- (bisect_check$left_mm + bisect_check$right_mm)/2
-# yes this step makes sense for most people, plot it just incase
-
-ggplot(bisect_check, aes(group = as.factor(offset), colour = as.factor(offset))) +
-  geom_point(aes(bisect_error, y = 0)) +
-  xlim(-75,75) +
-  theme_bw() +
-  facet_wrap(~prolific_id)
-
 # PARTICIPANT REMOVAL
 # there are participants that, for some reason trials have been doubled, remove those
 # first order by line response count
@@ -245,8 +226,8 @@ n_rows <- which(rowSums(is.na(calibDat))>9)
 cal_x <- calibDat$prolific_id[n_rows]
 
 # then  participants where mid x = NA, cannot calculate bisection without it
-#cal_x <- append(cal_x, calibDat[is.na(calibDat$calib_loc_midy_x), 1])
-#length(cal_x) # this gives us 15 IDs (but there may be overlap)
+cal_x <- append(cal_x, calibDat[is.na(calibDat$calib_loc_midy_x), 1])
+length(cal_x) # this gives us 15 IDs (but there may be overlap)
 
 # remove JATOS id
 calibDat <- calibDat[, -c(40)]
@@ -391,6 +372,59 @@ length(n$prolific_id)
 # recode IDs
 all_dat_breaks$prolific_id <- as.factor(all_dat_breaks$prolific_id)
 all_dat_breaks$ID <- as.character(as.numeric(all_dat_breaks$prolific_id))
+```
+
+# Use the data from the calibration step to rescale bisection responses to match screen scaling
+```{r}
+# isolate left and right - change should match across both but best to average jic
+LEFTx <- dplyr::filter(CALFIT2, AXIS == 'x' & LOC_DOT <= 0)
+RIGHTx <- dplyr::filter(CALFIT2, AXIS == 'x' & LOC_DOT >= 0)
+# remove upper and lower y
+LEFTx <- dplyr::filter(LEFTx, !LOC == 'uppery' & !LOC == 'lowery')
+RIGHTx <- dplyr::filter(RIGHTx, !LOC == 'uppery' & !LOC == 'lowery')
+# clean both, they are messy!
+LEFTx <- LEFTx[, c(1,2,4:6,8,11)]
+RIGHTx <- RIGHTx[, c(1,2,4:6,8,11)]
+
+# cast!
+L_cal <- dcast(LEFTx, prolific_id ~ LOC, value.var = "LOC_CLK")
+L_dot <- dcast(LEFTx, prolific_id ~ LOC, value.var = "LOC_DOT")
+# differences between points - to calculate rate of change
+# do this for 480 and 192
+L_cal$CAL_DIFF_480 <- L_cal$left480x - L_cal$midy
+L_dot$DOT_DIFF_480 <- L_dot$left480x - L_dot$midy
+L_cal$CAL_DIFF_192 <- L_cal$left192x - L_cal$midy
+L_dot$DOT_DIFF_192 <- L_dot$left192x - L_dot$midy
+# combine and calculate rate of change
+L_rate <- merge(L_dot, L_cal, by = ('prolific_id'))
+L_rate$rate480 <- L_rate$CAL_DIFF_480/L_rate$DOT_DIFF_480
+L_rate$rate192 <- L_rate$CAL_DIFF_192/L_rate$DOT_DIFF_192
+
+## repeat these steps for the right points, just to be sure
+# cast!
+R_cal <- dcast(RIGHTx, prolific_id ~ LOC, value.var = "LOC_CLK")
+R_dot <- dcast(RIGHTx, prolific_id ~ LOC, value.var = "LOC_DOT")
+# differences between points - to calculate rate of change
+# do this for 480 and 192
+R_cal$CAL_DIFF_480 <- R_cal$right480x - R_cal$midy
+R_dot$DOT_DIFF_480 <- R_dot$right480x - R_dot$midy
+R_cal$CAL_DIFF_192 <- R_cal$right192x - R_cal$midy
+R_dot$DOT_DIFF_192 <- R_dot$right192x - R_dot$midy
+# combine and calculate rate of change
+R_rate <- merge(R_dot, R_cal, by = ('prolific_id'))
+R_rate$rate480 <- R_rate$CAL_DIFF_480/R_rate$DOT_DIFF_480
+R_rate$rate192 <- R_rate$CAL_DIFF_192/R_rate$DOT_DIFF_192
+
+# apply this rate to the line bisection data - to scale bisection response
+rate192 <- L_rate[, c(1,15)]
+names(rate192)[2] <- 'L_rate'
+rate192$R_rate <- R_rate$rate192
+rate192$av_rate <- (rate192$L_rate+rate192$R_rate)/2
+
+# merge
+all_dat_breaks <- merge(all_dat_breaks, rate192, by = 'prolific_id')
+n <- count(all_dat_breaks, 'prolific_id')
+length(n$prolific_id)
 ```
 
 # Saving!

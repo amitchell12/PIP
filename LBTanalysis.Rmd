@@ -19,6 +19,29 @@ all_dat <- read.csv(file.path(aPath,fileName))
 ```
 
 ```{r}
+## First, code bisection error
+#all_dat$bisect_x_scaled <- all_dat$bisect_x/all_dat$av_rate
+# before calculating bisection error check bisect_x and calib_loc_mid make sense
+#bisect_check <- aggregate(bisect_x_scaled ~ prolific_id*left_mm*right_mm*calib_loc_midy_x, 
+ #                         mean, data = all_dat)
+# yep that seems to make sense, now convert and do the same
+all_dat$bisect_error <- all_dat$bisect_x - all_dat$calib_loc_midy_x
+# then scale the error by coordinate change rate calculated in previous step
+all_dat$bisect_error_scaled <- all_dat$bisect_error/all_dat$av_rate
+all_dat$bisect_error_scaled <- all_dat$bisect_error_scaled/all_dat$pix_permm
+
+bisect_check <- aggregate(bisect_error_scaled ~ prolific_id*left_mm*right_mm, 
+                          mean, data = all_dat)
+bisect_check$offset <- (bisect_check$left_mm + bisect_check$right_mm)/2
+# yes this step makes sense for most people, plot it just incase
+
+ggplot(bisect_check, aes(group = as.factor(offset), colour = as.factor(offset))) +
+  geom_point(aes(bisect_error_scaled, y = 0)) +
+  xlim(-75,75) +
+  theme_bw() +
+  facet_wrap(~prolific_id)
+
+
 # some more filtering
 # remove trials with response > 3000ms
 all_dat <- dplyr::filter(all_dat, response_time < 3000)
@@ -57,7 +80,7 @@ rownames(all_dat) <- NULL
 End point weightings on both block and tone conditions
 ```{r}
 # recode bisection variables
-all_dat$P <- all_dat$bisect_error
+all_dat$P <- all_dat$bisect_error_scaled
 all_dat$L <- all_dat$left_mm
 all_dat$R <- all_dat$right_mm
 all_dat$ID <- as.factor(all_dat$ID)
@@ -83,7 +106,7 @@ EW_DV <- read.csv(text="ID,tone,block,cond,NUMTRIALS,rsq,k,dPL,dPR")
 for(ID in levels(all_dat$ID)){
   for(cond in levels(all_dat$cond)){
     tmp <- all_dat[all_dat$ID == ID & all_dat$cond==cond, 
-                   c("bisect_error","pix_permm","P","L","R")]
+                   c("bisect_error_scaled","pix_permm","P","L","R")]
     model <- lm(P~L+R, data=tmp)
     #tone = tmp$tone
     #block = tmp$block
@@ -126,10 +149,21 @@ length(final_n$ID)
 ```{r}
 # plot EWS distribution
 ggplot(EW_DV, aes(EWB)) +
-  geom_density()
+  geom_density() +
+  theme_bw()
 
-EWSplot <- ggplot(EW_DV, aes(EWS)) +
-  geom_density()
+ggplot(EW_DV, aes(EWS)) +
+  geom_density() +
+  theme_bw()
+
+# plot all dPL and dPR to see why EWS is so high
+ggplot(EW_DV, aes(dPL, dPR)) +
+  geom_point() +
+  geom_hline(yintercept = .5) +
+  geom_vline(xintercept = .5) +
+  ylim(0.3,0.7) + 
+  xlim(0.3,0.7) +
+  theme_bw()
 
 # test re-test
 # cast by block
@@ -148,7 +182,6 @@ DF <- merge(block1, block2, by = 'ID')
 
 cor(DF$EWS_1, DF$EWS_2)
 cor(DF$EWB_1, DF$EWB_2)
-
 ```
 
 # Analysis across blocks
