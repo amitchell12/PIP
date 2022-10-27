@@ -166,8 +166,9 @@ ggplot(EW_DV, aes(dPL, dPR)) +
   theme_bw()
 
 # test re-test
-# cast by block
+# clearly define conditions in main data set
 EW_DV$block <- ifelse(EW_DV$cond == '1' | EW_DV$cond == '2', 'EARLY', 'LATE')
+EW_DV$tone <- ifelse(EW_DV$cond == '1' | EW_DV$cond == '3', 'BLANK', 'SOUND')
 
 block1 <- filter(EW_DV, block == 'EARLY')
 names(block1)[8] <- 'EWB_1'
@@ -184,7 +185,14 @@ cor(DF$EWS_1, DF$EWS_2)
 cor(DF$EWB_1, DF$EWB_2)
 ```
 
+# First, check for pseudoneglect
+```{r}
+pseudo <- aggregate(EW_DV)
+```
+
 # Analysis across blocks
+```{r}
+```
 # Analysis across tones
 
 # Directional bisection error
