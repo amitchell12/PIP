@@ -12,6 +12,8 @@ library(reshape2)
 library(ggpol)
 library(ggpubr)
 library(Rmisc)
+library(gghalves)
+library(RColorBrewer)
 ```
 
 # Load data
@@ -242,17 +244,38 @@ pseudo_sum <- summarySEwithin(data = pseudo, measurevar = 'BIAS', withinvars = '
 
 # Analysis across blocks
 ```{r}
+# colour
+blues <- brewer.pal(9, "Blues")
 # isolate silent trials only
 tonic <- filter(EW_DV, tone == 'BLANK')
+# recode block
+tonic$block <- ifelse(tonic$block == 'EARLY', 1, 2)
+tonic$xj <- jitter(tonic$block, .2)
 sum_tonic <- summarySEwithin(data = tonic, measurevar = 'EWS', withinvars = 'block')
 
 # first plot EWS by block
-ggplot(tonic, aes(block, EWS, group = ID)) +
-  geom_hline(aes(yintercept = 1)) +
-  geom_point(position = position_dodge(.2), shape = 21) +
+ggplot(tonic, aes(group = ID, colour = as.factor(block), fill = as.factor(block))) +
+  # all data
+  geom_half_violin(aes(as.factor(block), EWS, group = block),
+                   position = position_nudge(x = -.05), side = "l", 
+                   alpha = .4) +
+  geom_point(aes(xj, EWS), position = position_nudge(.05), shape = 21, alpha = .7) +
+  # summar data
   geom_point(data = sum_tonic, aes(block, EWS), 
-             position = position_nudge(-.15), size = 3) +
-  theme_classic()
+             position = position_nudge(-.05), colour = 'grey20', size = 0.5) +
+  geom_pointrange(data = sum_tonic, aes(block, y = EWS, 
+                                        ymin = EWS-ci, ymax = EWS+ci), 
+                position = position_nudge(-.05), size = 0.75, colour = 'grey20') +
+  # connect the two lines
+  geom_line(data = sum_tonic, 
+            aes(x = block, y = EWS), 
+            size = 0.75, position = position_nudge(-.05), colour = 'grey20') +
+  scale_colour_manual(values = c(blues[4], blues[7])) +
+  scale_fill_manual(values = c(blues[4], blues[7])) +
+  scale_x_discrete(breaks = c(1,2), labels = c('Early', 'Late')) +
+  labs(title = 'Time On Task', x = 'Block') +
+  theme_classic() +
+  theme(legend.position = 'none')
 
 # is this difference at all significant??
 # cast tonic
