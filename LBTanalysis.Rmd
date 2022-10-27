@@ -9,6 +9,9 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(reshape2)
+library(ggpol)
+library(ggpubr)
+library(Rmisc)
 ```
 
 # Load data
@@ -187,25 +190,156 @@ cor(DF$EWB_1, DF$EWB_2)
 
 # First, check for pseudoneglect
 ```{r}
-pseudo <- aggregate(EW_DV)
+# EWB
+pseudo <- aggregate(EWB ~ ID, mean, data = EW_DV)
+#pseudo$xj <- jitter(0, amount = .1)
+
+# run t-test
+# EWS - we have pseudoneglect
+EWB_test <- t.test(pseudo$EWB, mu = 0, alternative = 'less')
+EWB_test
+
+# Now for DBE - first we need to calculate this
+# calculate offset of the line - to subtract P from
+all_dat$offset <- (all_dat$left_mm + all_dat$right_mm)/2
+all_dat$DBE <- all_dat$bisect_error_scaled - all_dat$offset
+
+DBE_line <- aggregate(DBE ~ ID*cond*block*tone, mean, data = all_dat)
+# average across all and get pseudoneglect
+DBE <- aggregate(DBE ~ ID, mean, data = DBE_line)
+
+# DBE test
+DBE_test <- t.test(DBE$DBE, mu = 0, alternative = 'less')
+DBE_test
+
+# add DBE to pseudo then plot
+pseudo <- merge(pseudo, DBE, by = 'ID')
+# for compete picture, add EWS
+EWS <- aggregate(EWS ~ ID, mean, data = EW_DV)
+pseudo <- merge(pseudo, EWS, by = 'ID')
+# melt
+pseudo <- melt(pseudo, value.name = 'BIAS')
+# add h line to the data
+data_hline <- data.frame(variable = unique(pseudo$variable),  # Create data for lines
+                         hline = c(0, 0, 1))
+
+
+# first, plot
+av_plot <- ggplot(pseudo, aes(x = 1, y = BIAS, group = variable)) +
+  geom_boxjitter(width = .2,errorbar.length = .2, jitter.shape = 21, 
+                 jitter.size = 1.5, outlier.shape = NA, errorbar.draw = TRUE, 
+                 lwd = 0.7, notch = TRUE) +
+  xlim(.8,1.2) +
+  facet_wrap(~variable, scales = "free") +
+  theme_classic()
+
+av_plot +   geom_hline(data = data_hline,
+             aes(yintercept = hline))
+
+# summarise pseudo
+pseudo_sum <- summarySEwithin(data = pseudo, measurevar = 'BIAS', withinvars = 'variable')
 ```
 
 # Analysis across blocks
 ```{r}
+# isolate silent trials only
+tonic <- filter(EW_DV, tone == 'BLANK')
+sum_tonic <- summarySEwithin(data = tonic, measurevar = 'EWS', withinvars = 'block')
+
+# first plot EWS by block
+ggplot(tonic, aes(block, EWS, group = ID)) +
+  geom_hline(aes(yintercept = 1)) +
+  geom_point(position = position_dodge(.2), shape = 21) +
+  geom_point(data = sum_tonic, aes(block, EWS), 
+             position = position_nudge(-.15), size = 3) +
+  theme_classic()
+
+# is this difference at all significant??
+# cast tonic
+tonic_wide <- dcast(tonic, ID ~ block, value.var = "EWS")
+# difference between early and late
+tonic_wide$DIFF <- tonic_wide$EARLY - tonic_wide$LATE
+block_test <- t.test(tonic_wide$DIFF, mu = 0, alternative = 'less')
+block_test
 ```
 # Analysis across tones
+```{r}
+# first, average silent and toned trials by block
+phasic_wide <- dcast(EW_DV, ID ~ block*tone, value.var = 'EWS')
+phasic_wide$BLANK <- rowMeans(phasic_wide[, c(2,4)])
+phasic_wide$SOUND <- rowMeans(phasic_wide[, c(3,5)])
 
-# Directional bisection error
+# first plot EWS by tone
+# melt
+phasic <- phasic_wide[, c(1,6,7)]
+phasic <- melt(phasic, value.name = 'EWS', variable.name = 'tone')
+# summary data
+sum_phasic <- summarySEwithin(data = phasic, measurevar = 'EWS', withinvars = 'tone')
 
-# Test for pseudoneglect
+ggplot(phasic, aes(tone, EWS, group = ID)) +
+  geom_hline(aes(yintercept = 1)) +
+  geom_point(position = position_dodge(.2), shape = 21) +
+  geom_point(data = sum_phasic, aes(tone, EWS), 
+             position = position_nudge(-.15), size = 3) +
+  theme_classic()
+
+# is this difference at all significant??
+# difference between early and late
+phasic_wide$DIFF <- phasic_wide$SOUND - phasic_wide$BLANK
+tone_test <- t.test(phasic_wide$DIFF, mu = 0, alternative = 'greater')
+tone_test
+```
+
 
 ```{r}
 ```
 
 # Further checks
-
+# Run the same analyses as above, but this time on EWB
 ```{r}
-# time of breaks
-bisectData$break_length <- bisectData$time_break_time_stamp - bisectData$time_block_one_end 
-bisectData$break_length <- bisectData$break_length/100 #in seconds
+# across blocks
+# isolate silent trials only
+sum_tonic_bias <- summarySEwithin(data = tonic, measurevar = 'EWB', withinvars = 'block')
+
+# plot EWB by block - looks like the reverse effect is found here
+ggplot(tonic, aes(block, EWB, group = ID)) +
+  geom_hline(aes(yintercept = 0)) +
+  geom_point(position = position_dodge(.2), shape = 21) +
+  geom_point(data = sum_tonic_bias, aes(block, EWB), 
+             position = position_nudge(-.15), size = 3) +
+  theme_classic()
+
+# is this difference at all significant??
+# cast tonic
+tonic_bias <- dcast(tonic, ID ~ block, value.var = "EWB")
+# difference between early and late
+tonic_bias$DIFF <- tonic_bias$EARLY - tonic_bias$LATE
+block_bias_test <- t.test(tonic_bias$DIFF, mu = 0, alternative = 'greater')
+block_bias_test
+
+# across tone
+# first, average silent and toned trials by block
+phasic_bias_wide <- dcast(EW_DV, ID ~ block*tone, value.var = 'EWB')
+phasic_bias_wide$BLANK <- rowMeans(phasic_bias_wide[, c(2,4)])
+phasic_bias_wide$SOUND <- rowMeans(phasic_bias_wide[, c(3,5)])
+
+# first plot EWS by tone
+# melt
+phasic_bias <- phasic_bias_wide[, c(1,6,7)]
+phasic_bias <- melt(phasic_bias, value.name = 'EWB', variable.name = 'tone')
+# summary data
+sum_phasic_bias <- summarySEwithin(data = phasic_bias, measurevar = 'EWB', withinvars = 'tone')
+
+ggplot(phasic_bias, aes(tone, EWB, group = ID)) +
+  geom_hline(aes(yintercept = 0)) +
+  geom_point(position = position_dodge(.2), shape = 21) +
+  geom_point(data = sum_phasic_bias, aes(tone, EWB), 
+             position = position_nudge(-.15), size = 3) +
+  theme_classic()
+
+# is this difference at all significant??
+# difference between early and late
+phasic_bias_wide$DIFF <- phasic_bias_wide$SOUND - phasic_bias_wide$BLANK
+tone_bias_test <- t.test(phasic_bias_wide$DIFF, mu = 0, alternative = 'less')
+tone_bias_test
 ```
