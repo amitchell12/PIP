@@ -273,9 +273,13 @@ ggplot(tonic, aes(group = ID, colour = as.factor(block), fill = as.factor(block)
   scale_colour_manual(values = c(blues[4], blues[7])) +
   scale_fill_manual(values = c(blues[4], blues[7])) +
   scale_x_discrete(breaks = c(1,2), labels = c('Early', 'Late')) +
-  labs(title = 'Time On Task', x = 'Block') +
+  labs(title = 'Tonic Alerting: Time On Task', x = '') +
+  ylim(.8,1.2) +
   theme_classic() +
-  theme(legend.position = 'none')
+  theme(legend.position = 'none',
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12),
+        title = element_text(size = 14)) -> tonic_plot
 
 # is this difference at all significant??
 # cast tonic
@@ -287,6 +291,8 @@ block_test
 ```
 # Analysis across tones
 ```{r}
+# colour
+purps <- brewer.pal(9, "Greens")
 # first, average silent and toned trials by block
 phasic_wide <- dcast(EW_DV, ID ~ block*tone, value.var = 'EWS')
 phasic_wide$BLANK <- rowMeans(phasic_wide[, c(2,4)])
@@ -296,15 +302,40 @@ phasic_wide$SOUND <- rowMeans(phasic_wide[, c(3,5)])
 # melt
 phasic <- phasic_wide[, c(1,6,7)]
 phasic <- melt(phasic, value.name = 'EWS', variable.name = 'tone')
+# recode tone
+phasic$tone <- ifelse(phasic$tone == 'BLANK', 1, 2)
+phasic$xj1 <- jitter(phasic$tone, .2)
+
 # summary data
 sum_phasic <- summarySEwithin(data = phasic, measurevar = 'EWS', withinvars = 'tone')
 
-ggplot(phasic, aes(tone, EWS, group = ID)) +
-  geom_hline(aes(yintercept = 1)) +
-  geom_point(position = position_dodge(.2), shape = 21) +
+# first plot EWS by block
+ggplot(phasic, aes(group = ID, colour = as.factor(tone), fill = as.factor(tone))) +
+  # all data
+  geom_half_violin(aes(as.factor(tone), EWS, group = tone),
+                   position = position_nudge(x = -.05), side = "l", 
+                   alpha = .4) +
+  geom_point(aes(xj1, EWS), position = position_nudge(.05), shape = 21, alpha = .7) +
+  # summar data
   geom_point(data = sum_phasic, aes(tone, EWS), 
-             position = position_nudge(-.15), size = 3) +
-  theme_classic()
+             position = position_nudge(-.05), colour = 'grey20', size = 0.5) +
+  geom_pointrange(data = sum_phasic, aes(tone, y = EWS, 
+                                        ymin = EWS-ci, ymax = EWS+ci), 
+                position = position_nudge(-.05), size = 0.75, colour = 'grey20') +
+  # connect the two lines
+  geom_line(data = sum_phasic, 
+            aes(x = tone, y = EWS), 
+            size = 0.75, position = position_nudge(-.05), colour = 'grey20') +
+  scale_colour_manual(values = c(purps[4], purps[7])) +
+  scale_fill_manual(values = c(purps[4], purps[7])) +
+  scale_x_discrete(breaks = c(1,2), labels = c('No Tone', 'Tone')) +
+  labs(title = 'Phasic Alerting: Tones', x = '', y = '') +
+  ylim(.8,1.2) +
+  theme_classic() +
+  theme(legend.position = 'none',
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12),
+        title = element_text(size = 14)) -> phasic_plot
 
 # is this difference at all significant??
 # difference between early and late
@@ -313,8 +344,66 @@ tone_test <- t.test(phasic_wide$DIFF, mu = 0, alternative = 'greater')
 tone_test
 ```
 
-
+# Arrange plots together
 ```{r}
+EWS_plot <- ggarrange(tonic_plot, phasic_plot,
+                      ncol = 2, nrow = 1)
+
+EWS_plot
+
+ggsave('MainComparison-plot.png', EWS_plot, device = NULL, path = aPath,
+       width = 10, height = 5, dpi = 600)
+```
+
+# Plot the interaction effect
+Summary results across all four conditions
+```{r}
+all_cond_wide <- phasic_wide[, c(1:5) ,]
+# melt
+all_cond <- melt(all_cond_wide, value.name = 'EWS')
+# transform variable to numerical
+all_cond <- all_cond %>% 
+  rowwise() %>%
+  mutate(
+    COND = case_when(variable == 'EARLY_BLANK' ~ '1',
+                     variable == 'EARLY_SOUND' ~ '2',
+                     variable == 'LATE_BLANK' ~ '3',
+                     variable == 'LATE_SOUND' ~ '4'
+           ))
+all_cond$BLOCK <- ifelse(all_cond$COND == '1' | all_cond$COND == '2', '1', '2')
+all_cond$TONE <- ifelse(all_cond$COND == '1' | all_cond$COND == '3', '1', '2')
+all_cond$BLOCK <- as.factor(all_cond$BLOCK)
+all_cond$TONE <- as.factor(all_cond$TONE)
+
+# summarise
+sum_all <- summarySEwithin(all_cond, measurevar = 'EWS', withinvars = 'COND')
+# identify blocks and tones
+sum_all$BLOCK <- ifelse(sum_all$COND == '1' | sum_all$COND == '2', 'Early', 'Late')
+sum_all$TONE <- ifelse(sum_all$COND == '1' | sum_all$COND == '3', 'No tone', 'Tone')
+
+# plot this bad boy
+ggplot(sum_all, aes(BLOCK, EWS, group = TONE, colour = TONE)) +
+  geom_point(position = position_dodge(.2), size = 3) +
+  geom_errorbar(aes(BLOCK, ymin = EWS-ci, ymax = EWS+ci),
+                position = position_dodge(.2), width = .1, size = 0.75) +
+  geom_line(aes(x = BLOCK, y = EWS), 
+            size = 1, position = position_dodge(.2)) +
+  scale_colour_manual(values = c(purps[4], purps[7])) +
+  ylim(0.97, 1.05) +
+  labs(x = '') +
+  theme_bw() +
+  theme(legend.title = element_blank(),
+        legend.position = 'right',
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12),
+        title = element_text(size = 14),
+        legend.text = element_text(size = 12)) -> inter_plot
+
+ggsave('Interact_plot.png', inter_plot, device = NULL, path = aPath,
+       width = 6, height = 4, dpi = 600)
+
+# run anova on all cond
+
 ```
 
 # Further checks
@@ -324,13 +413,34 @@ tone_test
 # isolate silent trials only
 sum_tonic_bias <- summarySEwithin(data = tonic, measurevar = 'EWB', withinvars = 'block')
 
-# plot EWB by block - looks like the reverse effect is found here
-ggplot(tonic, aes(block, EWB, group = ID)) +
-  geom_hline(aes(yintercept = 0)) +
-  geom_point(position = position_dodge(.2), shape = 21) +
+# plot the same plot for EWB
+ggplot(tonic, aes(group = ID, colour = as.factor(block), fill = as.factor(block))) +
+  # all data
+  geom_half_violin(aes(as.factor(block), EWB, group = block),
+                   position = position_nudge(x = -.05), side = "l", 
+                   alpha = .4) +
+  geom_point(aes(xj, EWB), position = position_nudge(.05), shape = 21, alpha = .7) +
+  # summar data
   geom_point(data = sum_tonic_bias, aes(block, EWB), 
-             position = position_nudge(-.15), size = 3) +
-  theme_classic()
+             position = position_nudge(-.05), colour = 'grey20', size = 0.5) +
+  geom_pointrange(data = sum_tonic_bias, aes(block, y = EWB, 
+                                        ymin = EWB-ci, ymax = EWB+ci), 
+                position = position_nudge(-.05), size = 0.75, colour = 'grey20') +
+  # connect the two lines
+  geom_line(data = sum_tonic_bias, 
+            aes(x = block, y = EWB), 
+            size = 0.75, position = position_nudge(-.05), colour = 'grey20') +
+  scale_colour_manual(values = c(blues[4], blues[7])) +
+  scale_fill_manual(values = c(blues[4], blues[7])) +
+  scale_x_discrete(breaks = c(1,2), labels = c('Early', 'Late')) +
+  labs(title = 'Bias: Time On Task', x = '') +
+  #ylim(.8,1.2) +
+  theme_classic() +
+  theme(legend.position = 'none',
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12),
+        title = element_text(size = 14))
+
 
 # is this difference at all significant??
 # cast tonic
