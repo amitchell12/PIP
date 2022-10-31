@@ -520,6 +520,9 @@ ggplot(tonic, aes(group = ID, colour = as.factor(block), fill = as.factor(block)
 # is this difference at all significant??
 # cast tonic
 tonic_bias <- dcast(tonic, ID ~ block, value.var = "EWB")
+# rename columns
+names(tonic_bias)[2] <- 'EARLY'
+names(tonic_bias)[3] <- 'LATE'
 # difference between early and late
 tonic_bias$DIFF <- tonic_bias$EARLY - tonic_bias$LATE
 block_bias_test <- t.test(tonic_bias$DIFF, mu = 0, alternative = 'greater')
@@ -561,7 +564,7 @@ ggplot(phasic_bias, aes(group = ID, colour = as.factor(tone), fill = as.factor(t
   scale_colour_manual(values = c(purps[4], purps[7])) +
   scale_fill_manual(values = c(purps[4], purps[7])) +
   scale_x_discrete(breaks = c(1,2), labels = c('No tone', 'Tone')) +
-  labs(title = 'Bias: Tone', x = '', y = '') +
+  labs(x = '', y = '') +
   ylim(-.12,.12) +
   theme_classic() +
   theme(legend.position = 'none',
@@ -581,6 +584,36 @@ ggsave('BiasManipulation-plot.png', EWB_plot, device = NULL, path = aPath,
 phasic_bias_wide$DIFF <- phasic_bias_wide$SOUND - phasic_bias_wide$BLANK
 tone_bias_test <- t.test(phasic_bias_wide$DIFF, mu = 0, alternative = 'less')
 tone_bias_test
+```
+
+# Bias difference - in tone trials
+```{r}
+# now plot difference and put together!
+# summary of difference
+phasic_bias_diff <- summarySE(data = phasic_bias_wide, measurevar = 'DIFF')
+
+ggplot(phasic_bias_diff) +
+  geom_hline(aes(yintercept = 0), colour = 'gray50') +
+  geom_point(aes(0, DIFF), size = 5, colour = purps[7]) +
+  geom_linerange(aes(0, ymin = DIFF-ci, ymax = DIFF+ci), colour = purps[7], size = 1) +
+ #xlim(-.025,.025) +
+  ylim(-.05,.05) +
+  labs(x = '', y = 'Difference (Tone - No tone)') +
+  scale_x_continuous(breaks = 0, labels = 'BIAS') +
+  theme_classic() +
+  theme(axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12))-> phasic_bias_diff_plot
+
+phasic_bias_all <- ggarrange(phasic_bias_plot, phasic_bias_diff_plot,
+          ncol = 2, nrow = 1,
+          widths = c(1, 0.5))
+phasic_bias_all <- annotate_figure(phasic_bias_all, 
+                             top = text_grob("BIAS: Tone", size = 14))
+phasic_bias_all
+
+# saving
+ggsave('TONE_BIAS-plot.png', phasic_bias_all, device = NULL, path = aPath,
+       width = 9, height = 5, dpi = 600)
 ```
 
 # Interaction plot for EWB
@@ -627,8 +660,7 @@ ggplot(sum_bias_all, aes(BLOCK, EWB, group = TONE, colour = TONE)) +
         legend.text = element_text(size = 12)) -> inter_bias_plot
 inter_bias_plot
 
-ggsave('Interact_bias_plot.png', inter_bias
-       _plot, device = NULL, path = aPath,
+ggsave('Interact_bias_plot.png', inter_bias_plot, device = NULL, path = aPath,
        width = 6, height = 4, dpi = 600)
 
 ```
