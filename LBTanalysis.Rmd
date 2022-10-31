@@ -162,12 +162,13 @@ ggplot(EW_DV, aes(EWS)) +
   theme_bw()
 
 # plot all dPL and dPR to see why EWS is so high
-ggplot(EW_DV, aes(dPL, dPR)) +
-  geom_point() +
+ggplot(EW_DV, aes(dPR, dPL)) +
   geom_hline(yintercept = .5) +
   geom_vline(xintercept = .5) +
-  ylim(0.3,0.7) + 
-  xlim(0.3,0.7) +
+  geom_abline(intercept = 0, slope = 1, alpha = .5, linetype = 'dashed') +
+  geom_point(shape = 21) +
+  ylim(0,1) + 
+  xlim(0,1) +
   theme_bw()
 
 # test re-test
@@ -221,18 +222,26 @@ EWS <- aggregate(EWS ~ ID, mean, data = EW_DV)
 pseudo <- merge(pseudo, EWS, by = 'ID')
 # melt
 pseudo <- melt(pseudo, value.name = 'BIAS')
+
+# change variable names for pseudo
+pseudo <- pseudo %>% 
+  rowwise() %>%
+  mutate(
+    NAME = case_when(variable == 'EWB' ~ 'BIAS',
+                     variable == 'DBE' ~ 'ERROR',
+                     variable == 'EWS' ~ 'SUM'
+    ))
 # add h line to the data
-data_hline <- data.frame(variable = unique(pseudo$variable),  # Create data for lines
+data_hline <- data.frame(NAME = unique(pseudo$NAME),  # Create data for lines
                          hline = c(0, 0, 1))
 
-
 # first, plot
-av_plot <- ggplot(pseudo, aes(x = 1, y = BIAS, group = variable)) +
+av_plot <- ggplot(pseudo, aes(x = 1, y = BIAS, group = NAME)) +
   geom_boxjitter(width = .2,errorbar.length = .2, jitter.shape = 21, 
                  jitter.size = 2, outlier.shape = NA, errorbar.draw = TRUE, 
                  lwd = 0.7, notch = TRUE) +
   xlim(.8,1.2) +
-  facet_wrap(~variable, scales = "free") +
+  facet_wrap(~NAME, scales = "free") +
   labs(x = '', y = 'Measurement') +
   theme_classic() +
   theme(axis.ticks.x = element_blank(),
@@ -283,21 +292,50 @@ ggplot(tonic, aes(group = ID, colour = as.factor(block), fill = as.factor(block)
   scale_colour_manual(values = c(blues[4], blues[7])) +
   scale_fill_manual(values = c(blues[4], blues[7])) +
   scale_x_discrete(breaks = c(1,2), labels = c('Early', 'Late')) +
-  labs(title = 'Tonic Alerting: Time On Task', x = '') +
+  labs(x = '') +
   ylim(.8,1.2) +
   theme_classic() +
   theme(legend.position = 'none',
         axis.title = element_text(size = 14),
-        axis.text = element_text(size = 12),
-        title = element_text(size = 14)) -> tonic_plot
+        axis.text = element_text(size = 12)) -> tonic_plot
 
 # is this difference at all significant??
 # cast tonic
 tonic_wide <- dcast(tonic, ID ~ block, value.var = "EWS")
+# rename columns
+names(tonic_wide)[2] <- 'EARLY'
+names(tonic_wide)[3] <- 'LATE'
 # difference between early and late
-tonic_wide$DIFF <- tonic_wide$EARLY - tonic_wide$LATE
+tonic_wide$DIFF <- tonic_wide$LATE - tonic_wide$EARLY
 block_test <- t.test(tonic_wide$DIFF, mu = 0, alternative = 'less')
 block_test
+
+# now plot difference and put together!
+# summary of difference
+tonic_diff <- summarySE(data = tonic_wide, measurevar = 'DIFF')
+
+ggplot(tonic_diff) +
+  geom_hline(aes(yintercept = 0), colour = 'gray50') +
+  geom_point(aes(0, DIFF), size = 5, colour = blues[7]) +
+  geom_linerange(aes(0, ymin = DIFF-ci, ymax = DIFF+ci), colour = blues[7], size = 1) +
+ #xlim(-.025,.025) +
+  ylim(-.05,.05) +
+  labs(x = '', y = 'Difference (Block 2 - Block 1)') +
+  scale_x_continuous(breaks = 0, labels = 'SUM') +
+  theme_classic() +
+  theme(axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12))-> tonic_diff_plot
+
+tonic_all <- ggarrange(tonic_plot, tonic_diff_plot,
+          ncol = 2, nrow = 1,
+          widths = c(1, 0.5))
+tonic_all <- annotate_figure(tonic_all, 
+                             top = text_grob("SUM: Time on Task", size = 14))
+tonic_all
+
+# saving
+ggsave('TOT-plot.png', tonic_all, device = NULL, path = aPath,
+       width = 9, height = 5, dpi = 600)
 ```
 # Analysis across tones
 ```{r}
@@ -339,7 +377,7 @@ ggplot(phasic, aes(group = ID, colour = as.factor(tone), fill = as.factor(tone))
   scale_colour_manual(values = c(grees[4], grees[7])) +
   scale_fill_manual(values = c(grees[4], grees[7])) +
   scale_x_discrete(breaks = c(1,2), labels = c('No Tone', 'Tone')) +
-  labs(title = 'Phasic Alerting: Tones', x = '', y = '') +
+  labs( x = '') +
   ylim(.8,1.2) +
   theme_classic() +
   theme(legend.position = 'none',
@@ -352,6 +390,33 @@ ggplot(phasic, aes(group = ID, colour = as.factor(tone), fill = as.factor(tone))
 phasic_wide$DIFF <- phasic_wide$SOUND - phasic_wide$BLANK
 tone_test <- t.test(phasic_wide$DIFF, mu = 0, alternative = 'greater')
 tone_test
+
+# now plot difference and put together!
+# summary of difference
+phasic_diff <- summarySE(data = phasic_wide, measurevar = 'DIFF')
+
+ggplot(phasic_diff) +
+  geom_hline(aes(yintercept = 0), colour = 'gray50') +
+  geom_point(aes(0, DIFF), size = 5, colour = grees[7]) +
+  geom_linerange(aes(0, ymin = DIFF-ci, ymax = DIFF+ci), colour = grees[7], size = 1) +
+ #xlim(-.025,.025) +
+  ylim(-.05,.05) +
+  labs(x = '', y = 'Difference (Tone - No tone)') +
+  scale_x_continuous(breaks = 0, labels = 'SUM') +
+  theme_classic() +
+  theme(axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12))-> phasic_diff_plot
+
+phasic_all <- ggarrange(phasic_plot, phasic_diff_plot,
+          ncol = 2, nrow = 1,
+          widths = c(1, 0.5))
+phasic_all <- annotate_figure(phasic_all, 
+                             top = text_grob("SUM: Tone", size = 14))
+phasic_all
+
+# saving
+ggsave('TONE-plot.png', phasic_all, device = NULL, path = aPath,
+       width = 9, height = 5, dpi = 600)
 ```
 
 # Arrange plots together
@@ -360,9 +425,6 @@ EWS_plot <- ggarrange(tonic_plot, phasic_plot,
                       ncol = 2, nrow = 1)
 
 EWS_plot
-
-ggsave('MainComparison-plot.png', EWS_plot, device = NULL, path = aPath,
-       width = 10, height = 5, dpi = 600)
 ```
 
 # Plot the interaction effect
