@@ -259,6 +259,11 @@ ggsave('Measurements.png', av_plot, device = NULL, path = aPath,
 
 # summarise pseudo
 pseudo_sum <- summarySEwithin(data = pseudo, measurevar = 'BIAS', withinvars = 'variable')
+
+# get effect sizes for all
+# effect size
+pseudo_sum <- pseudo_sum %>%
+  mutate(es = BIAS/sd)
 ```
 
 # Analysis across blocks
@@ -313,6 +318,8 @@ block_test
 # now plot difference and put together!
 # summary of difference
 tonic_diff <- summarySE(data = tonic_wide, measurevar = 'DIFF')
+# get effect size
+tonic_diff <- tonic_diff %>% mutate(es = DIFF/sd)
 
 ggplot(tonic_diff) +
   geom_hline(aes(yintercept = 0), colour = 'gray50') +
@@ -394,6 +401,8 @@ tone_test
 # now plot difference and put together!
 # summary of difference
 phasic_diff <- summarySE(data = phasic_wide, measurevar = 'DIFF')
+# get effect size
+phasic_diff <- phasic_diff %>% mutate(es = DIFF/sd)
 
 ggplot(phasic_diff) +
   geom_hline(aes(yintercept = 0), colour = 'gray50') +
@@ -417,14 +426,6 @@ phasic_all
 # saving
 ggsave('TONE-plot.png', phasic_all, device = NULL, path = aPath,
        width = 9, height = 5, dpi = 600)
-```
-
-# Arrange plots together
-```{r}
-EWS_plot <- ggarrange(tonic_plot, phasic_plot,
-                      ncol = 2, nrow = 1)
-
-EWS_plot
 ```
 
 # Plot the interaction effect
@@ -460,7 +461,7 @@ ggplot(sum_all, aes(BLOCK, EWS, group = TONE, colour = TONE)) +
                 position = position_dodge(.2), width = .1, size = 0.75) +
   geom_line(aes(x = BLOCK, y = EWS), 
             size = 1, position = position_dodge(.2)) +
-  scale_colour_manual(values = c(purps[4], purps[7])) +
+  scale_colour_manual(values = c(grees[4], grees[7])) +
   ylim(0.97, 1.05) +
   labs(x = '') +
   theme_bw() +
@@ -591,6 +592,8 @@ tone_bias_test
 # now plot difference and put together!
 # summary of difference
 phasic_bias_diff <- summarySE(data = phasic_bias_wide, measurevar = 'DIFF')
+# calculate effect size
+phasic_bias_diff <- phasic_bias_diff %>% mutate(es = DIFF/sd)
 
 ggplot(phasic_bias_diff) +
   geom_hline(aes(yintercept = 0), colour = 'gray50') +
