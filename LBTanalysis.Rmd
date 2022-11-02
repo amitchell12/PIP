@@ -509,7 +509,7 @@ ggplot(tonic, aes(group = ID, colour = as.factor(block), fill = as.factor(block)
   scale_colour_manual(values = c(orans[4], orans[7])) +
   scale_fill_manual(values = c(orans[4], orans[7])) +
   scale_x_discrete(breaks = c(1,2), labels = c('Early', 'Late')) +
-  labs(title = 'Bias: Time On Task', x = '') +
+  labs(title = 'Bias: time on task', x = '', y = '') +
   ylim(-.12,.12) +
   theme_classic() +
   theme(legend.position = 'none',
@@ -565,7 +565,7 @@ ggplot(phasic_bias, aes(group = ID, colour = as.factor(tone), fill = as.factor(t
   scale_colour_manual(values = c(purps[4], purps[7])) +
   scale_fill_manual(values = c(purps[4], purps[7])) +
   scale_x_discrete(breaks = c(1,2), labels = c('No tone', 'Tone')) +
-  labs(x = '', y = '') +
+  labs(title = 'Bias: tone effect', x = '', y = 'EWB') +
   ylim(-.12,.12) +
   theme_classic() +
   theme(legend.position = 'none',
@@ -574,7 +574,7 @@ ggplot(phasic_bias, aes(group = ID, colour = as.factor(tone), fill = as.factor(t
         title = element_text(size = 14)) -> phasic_bias_plot
 
 # combine plots
-EWB_plot <- ggarrange(tonic_bias_plot, phasic_bias_plot,
+EWB_plot <- ggarrange(phasic_bias_plot, tonic_bias_plot,
                       ncol = 2, nrow = 1)
 EWB_plot
 ggsave('BiasManipulation-plot.png', EWB_plot, device = NULL, path = aPath,
