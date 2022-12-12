@@ -12,6 +12,7 @@ library(reshape2)
 library(glmmTMB)
 library(ggplot2)
 library(plyr)
+library(lme4)
 ```
 
 # Setting paths for raw data and analysis
@@ -20,11 +21,19 @@ dPath <- '/Users/au706616/Documents/Experiments/PIPTOT/LBTraw'
 aPath <- '/Users/au706616/Documents/Experiments/PIPTOT/analysis/'
 
 datname <- 'LBTraw_final.csv'
-qualname <- 'QUALraw_final.csv'
+dat2name <- 'LBTraw_final2.csv'
+qualname <- 'QUALraw_final2.csv'
 
 # load raw and qual data
 bisectData <- read.csv(file.path(dPath,datname)) 
+bisect2Data <- read.csv(file.path(dPath,dat2name)) #another data set with extra 85 participants (due to data-loss)
 qualData <- read.csv(file.path(dPath,qualname)) 
+
+# flag first and second recruitment rounds
+bisectData$recruit <- 1
+bisect2Data$recruit <- 2
+# rbind bisect data-sets
+bisectData <- rbind(bisectData, bisect2Data)
 ```
 
 # Main data load and compile
@@ -44,7 +53,7 @@ nVoid <- aggregate(void_trial~prolific_id, length, data=void)
 # narrow down data-frame to relevant columns only - putting important first
 dat <- bisectData[, c(224,6,11,12,26,289,211,212,274,275,214,36,37,46,89,164,165,206,207,
                           208,216:218,222,223,225,228,229,237,251,352,356,319,321,322,386,388,
-                      131,385)]
+                      131,385,389)]
 # data for calibration check, seperate from main df
 calib_dat <- bisectData[, c(224,17:34,172:189,281,287,208)]
 ```
@@ -86,6 +95,7 @@ qual10name <- 'QUALraw_first10.csv'
 
 # first only load the raw data because demographic is a little useless at this stage
 bisect10Data <- read.csv(file.path(dPath,dat10name)) 
+bisect10Data$recruit <- 1 
 
 # same filtering as above
 # first get an idea of all participants (prolific IDs)
@@ -101,7 +111,7 @@ void10 <- dplyr::filter(bisect10Data, void_trial == 1)
 # narrow down data-frame for correct columns only
 dat10 <- bisect10Data[, c(6,11,12,26,271,201,202,256,257,204,36,37,45,81,154,155,196,197,
                           198,206:208,212,213,215,218,219,224,237,326,330,294,296,297,
-                          359,361,123,358)]
+                          359,361,123,358,362)]
 calib10 <- bisect10Data[, c(17:34,162:179,263,269,198)]
 
 ## Qualitative data
@@ -153,6 +163,14 @@ ndat <- ndat[order(ndat$prolific_id) ,] # order by prolific id for easy identifi
 # this is the actual number of participants recruited
 length(ndat$prolific_id) 
 
+# count n participants from each round
+nRec1 <- all_dat %>% 
+  filter(recruit == 1) %>% 
+  count('prolific_id')
+nRec2 <- all_dat %>% 
+  filter(recruit == 2) %>% 
+  count('prolific_id')
+
 # define some key criteria
 # extract variables of interest for quality checks
 # first response time to line in ms
@@ -178,12 +196,7 @@ all_dat <- all_dat %>%
   distinct(count_line_mouse_response, .keep_all = TRUE)
 
 # remove participants with breaks > 5 minutes
-breaks <- aggregate(break_time ~ prolific_id, mean, data = all_dat, na.rm = FALSE)
-length(breaks$prolific_id)
-id_x <- breaks$prolific_id[breaks$break_time > 300] #this step removes 15 participants! 
-
-# finally, remove participants whose bisect error is NA (no midpoint coordinate)
-id_x <- append(id_x, all_dat$prolific_id[is.na(all_dat$bisect_error)])
+id_x <- bt$prolific_id[bt$break_time > 301] #this step removes 63 participants! 
 
 # final audio check, correct?
 finalAudio <- bisectData[bisectData$response_audio_kbd_final == 7 ,]
@@ -302,7 +315,7 @@ y_plot <- ggplot(
 calib_points <- filter(calib_points, !(prolific_id %in% cal_x))
 n <- count(calib_points, 'prolific_id')
 length(n$prolific_id)
-# this step removed 9 further participants from data-set
+# this step removed 11 further participants from data-set
 
 # Regressing calibration values
 # get data for linear regression

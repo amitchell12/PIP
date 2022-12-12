@@ -31,6 +31,7 @@ all_dat <- read.csv(file.path(aPath,fileName))
  #                         mean, data = all_dat)
 # yep that seems to make sense, now convert and do the same
 all_dat$bisect_error <- all_dat$bisect_x - all_dat$calib_loc_midy_x
+
 # then scale the error by coordinate change rate calculated in previous step
 all_dat$bisect_error_scaled <- all_dat$bisect_error/all_dat$av_rate
 all_dat$bisect_error_scaled <- all_dat$bisect_error_scaled/all_dat$pix_permm
@@ -252,6 +253,7 @@ av_plot <- ggplot(pseudo, aes(x = 1, y = BIAS, group = NAME)) +
 
 av_plot <- av_plot +   geom_hline(data = data_hline,
              aes(yintercept = hline), alpha = .5)
+av_plot
 
 # save plot
 ggsave('Measurements.png', av_plot, device = NULL, path = aPath,
@@ -298,7 +300,7 @@ ggplot(tonic, aes(group = ID, colour = as.factor(block), fill = as.factor(block)
   scale_fill_manual(values = c(blues[4], blues[7])) +
   scale_x_discrete(breaks = c(1,2), labels = c('Early', 'Late')) +
   labs(x = '') +
-  ylim(.8,1.2) +
+  ylim(.7,1.2) +
   theme_classic() +
   theme(legend.position = 'none',
         axis.title = element_text(size = 14),
@@ -471,6 +473,7 @@ ggplot(sum_all, aes(BLOCK, EWS, group = TONE, colour = TONE)) +
         axis.text = element_text(size = 12),
         title = element_text(size = 14),
         legend.text = element_text(size = 12)) -> inter_plot
+inter_plot
 
 ggsave('Interact_plot.png', inter_plot, device = NULL, path = aPath,
        width = 6, height = 4, dpi = 600)
