@@ -274,6 +274,8 @@ pseudo_sum <- pseudo_sum %>%
 blues <- brewer.pal(9, "Blues")
 # isolate silent trials only
 tonic <- filter(EW_DV, tone == 'BLANK')
+# if tone trials are included in the analysis - the effect of TOT is significant
+#tonic <- aggregate(EWS~block*ID, mean, data = EW_DV)
 # recode block
 tonic$block <- ifelse(tonic$block == 'EARLY', 1, 2)
 tonic$xj <- jitter(tonic$block, .2)
@@ -300,7 +302,7 @@ ggplot(tonic, aes(group = ID, colour = as.factor(block), fill = as.factor(block)
   scale_fill_manual(values = c(blues[4], blues[7])) +
   scale_x_discrete(breaks = c(1,2), labels = c('Early', 'Late')) +
   labs(x = '') +
-  ylim(.7,1.2) +
+  #ylim(.7,1.2) +
   theme_classic() +
   theme(legend.position = 'none',
         axis.title = element_text(size = 14),
@@ -319,7 +321,7 @@ block_test
 
 # now plot difference and put together!
 # summary of difference
-tonic_diff <- summarySE(data = tonic_wide, measurevar = 'DIFF')
+tonic_diff <- summarySE(data = tonic_wide, measurevar = 'DIFF', na.rm = TRUE)
 # get effect size
 tonic_diff <- tonic_diff %>% mutate(es = DIFF/sd)
 
@@ -358,8 +360,10 @@ phasic_wide$SOUND <- rowMeans(phasic_wide[, c(3,5)])
 # first plot EWS by tone
 # melt
 phasic <- phasic_wide[, c(1,6,7)]
+#phasic <- phasic_wide[, c(1:3)] #taking results from the first block only
 phasic <- melt(phasic, value.name = 'EWS', variable.name = 'tone')
 # recode tone
+#phasic$tone <- ifelse(phasic$tone == 'EARLY_BLANK', 1, 2)
 phasic$tone <- ifelse(phasic$tone == 'BLANK', 1, 2)
 phasic$xj1 <- jitter(phasic$tone, .2)
 
@@ -387,7 +391,7 @@ ggplot(phasic, aes(group = ID, colour = as.factor(tone), fill = as.factor(tone))
   scale_fill_manual(values = c(grees[4], grees[7])) +
   scale_x_discrete(breaks = c(1,2), labels = c('No Tone', 'Tone')) +
   labs( x = '') +
-  ylim(.8,1.2) +
+  #ylim(.8,1.2) +
   theme_classic() +
   theme(legend.position = 'none',
         axis.title = element_text(size = 14),
@@ -397,12 +401,13 @@ ggplot(phasic, aes(group = ID, colour = as.factor(tone), fill = as.factor(tone))
 # is this difference at all significant??
 # difference between early and late
 phasic_wide$DIFF <- phasic_wide$SOUND - phasic_wide$BLANK
+#phasic_wide$DIFF <- phasic_wide$EARLY_SOUND - phasic_wide$EARLY_BLANK
 tone_test <- t.test(phasic_wide$DIFF, mu = 0, alternative = 'greater')
 tone_test
 
 # now plot difference and put together!
 # summary of difference
-phasic_diff <- summarySE(data = phasic_wide, measurevar = 'DIFF')
+phasic_diff <- summarySE(data = phasic_wide, measurevar = 'DIFF', na.rm = TRUE)
 # get effect size
 phasic_diff <- phasic_diff %>% mutate(es = DIFF/sd)
 
