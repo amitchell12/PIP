@@ -177,7 +177,7 @@ nRec2 <- all_dat %>%
 all_dat$response_time <- all_dat$time_cursor_locs - all_dat$time_line 
 rt <- aggregate(response_time ~ prolific_id, mean, data = all_dat) # check it makes sense
 # then length of break (in seconds)
-all_dat$break_time <- (all_dat$time_break_time_stamp - all_dat$time_block_one_end)/100
+all_dat$break_time <- (all_dat$time_break_time_stamp - all_dat$time_block_one_end)/1000
 bt <- aggregate(break_time ~ prolific_id, mean, data = all_dat) # check it makes sense
 
 # code conditions of interest - block and tone (pip)
@@ -436,7 +436,7 @@ rate192$av_rate <- (rate192$L_rate+rate192$R_rate)/2
 
 # merge
 all_dat_breaks <- merge(all_dat_breaks, rate192, by = 'prolific_id')
-n <- count(all_dat_breaks, 'prolific_id')
+n <- count(all_dat_breaks, prolific_id)
 length(n$prolific_id)
 ```
 

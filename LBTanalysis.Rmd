@@ -72,7 +72,7 @@ id_x <- append(id_x, nblock$prolific_id[nblock$n < 2])
 id_x <- append(id_x, ntone$prolific_id[nblock$n < 2])
 
 all_dat <- filter(all_dat, !(prolific_id %in% id_x))
-n <- count(all_dat, 'prolific_id')
+n <- count(all_dat, prolific_id)
 length(n$prolific_id)
 
 # recode ID
@@ -147,7 +147,7 @@ id_filt <- id_filt[!is.na(id_filt)]
 # calculate final n of participants that can be used (this will be low)
 all_dat <- filter(all_dat, !(ID %in% id_filt))
 EW_DV <- filter(EW_DV, !(ID %in% id_filt))
-final_n <- count(all_dat, 'ID')
+final_n <- count(all_dat, ID)
 length(final_n$ID)
 ```
 
@@ -345,7 +345,7 @@ tonic_all <- annotate_figure(tonic_all,
 tonic_all
 
 # saving
-ggsave('TOT-plot.png', tonic_all, device = NULL, path = aPath,
+ggsave('TOTwTONE-plot.png', tonic_all, device = NULL, path = aPath,
        width = 9, height = 5, dpi = 600)
 ```
 # Analysis across tones
@@ -483,8 +483,12 @@ inter_plot
 ggsave('Interact_plot.png', inter_plot, device = NULL, path = aPath,
        width = 6, height = 4, dpi = 600)
 
-# run anova on all cond
+# linear regression of interaction
+EW_DV$tone <- as.factor(EW_DV$tone)
+EW_DV$block <- as.factor(EW_DV$block)
 
+model.EWS <- lm(EWS ~ tone*block, data = EW_DV)
+summary(model.EWS)
 ```
 
 # Further checks
@@ -536,6 +540,11 @@ names(tonic_bias)[3] <- 'LATE'
 tonic_bias$DIFF <- tonic_bias$EARLY - tonic_bias$LATE
 block_bias_test <- t.test(tonic_bias$DIFF, mu = 0, alternative = 'greater')
 block_bias_test
+
+tonic_bias_diff <- summarySE(data = tonic_bias, measurevar = 'DIFF', na.rm = TRUE)
+
+# get effect size
+tonic_bias_diff <- tonic_bias_diff %>% mutate(es = DIFF/sd)
 
 # across tone
 # first, average silent and toned trials by block
@@ -591,6 +600,10 @@ ggsave('BiasManipulation-plot.png', EWB_plot, device = NULL, path = aPath,
 # is this difference at all significant??
 # difference between early and late
 phasic_bias_wide$DIFF <- phasic_bias_wide$SOUND - phasic_bias_wide$BLANK
+# get effect size
+phasic_bias_diff <- summarySE(data = phasic_bias_wide, measurevar = 'DIFF', na.rm = TRUE)
+phasic_bias_diff <- phasic_bias_diff %>% mutate(es = DIFF/sd)
+
 tone_bias_test <- t.test(phasic_bias_wide$DIFF, mu = 0, alternative = 'less')
 tone_bias_test
 ```
@@ -673,6 +686,10 @@ inter_bias_plot
 
 ggsave('Interact_bias_plot.png', inter_bias_plot, device = NULL, path = aPath,
        width = 6, height = 4, dpi = 600)
+
+# linear regression
+model.EWB <- lm(EWB ~ tone*block, data = EW_DV)
+summary(model.EWB)
 
 ```
 
