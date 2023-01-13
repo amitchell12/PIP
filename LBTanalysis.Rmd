@@ -14,6 +14,7 @@ library(ggpubr)
 library(Rmisc)
 library(gghalves)
 library(RColorBrewer)
+library(gghalves)
 ```
 
 # Load data
@@ -34,18 +35,19 @@ all_dat$bisect_error <- all_dat$bisect_x - all_dat$calib_loc_midy_x
 
 # then scale the error by coordinate change rate calculated in previous step
 all_dat$bisect_error_scaled <- all_dat$bisect_error/all_dat$av_rate
-all_dat$bisect_error_scaled <- all_dat$bisect_error_scaled/all_dat$pix_permm
+all_dat$bisect_error_scaled <- all_dat$bisect_error_scaled/all_dat$pix_permm #transfer to mm
 
 bisect_check <- aggregate(bisect_error_scaled ~ prolific_id*left_mm*right_mm, 
                           mean, data = all_dat)
 bisect_check$offset <- (bisect_check$left_mm + bisect_check$right_mm)/2
 # yes this step makes sense for most people, plot it just incase
 
-ggplot(bisect_check, aes(group = as.factor(offset), colour = as.factor(offset))) +
+all_plot <- ggplot(bisect_check, aes(group = as.factor(offset), colour = as.factor(offset))) +
   geom_point(aes(bisect_error_scaled, y = 0)) +
   xlim(-75,75) +
   theme_bw() +
   facet_wrap(~prolific_id)
+all_plot
 
 
 # some more filtering
@@ -72,7 +74,7 @@ id_x <- append(id_x, nblock$prolific_id[nblock$n < 2])
 id_x <- append(id_x, ntone$prolific_id[nblock$n < 2])
 
 all_dat <- filter(all_dat, !(prolific_id %in% id_x))
-n <- count(all_dat, prolific_id)
+n <- count(all_dat, 'prolific_id')
 length(n$prolific_id)
 
 # recode ID
@@ -147,8 +149,8 @@ id_filt <- id_filt[!is.na(id_filt)]
 # calculate final n of participants that can be used (this will be low)
 all_dat <- filter(all_dat, !(ID %in% id_filt))
 EW_DV <- filter(EW_DV, !(ID %in% id_filt))
-final_n <- count(all_dat, ID)
-length(final_n$ID)
+final_n <- count(all_dat, 'ID')
+length(final_n$ID) #final number of participants
 ```
 
 # Reliability and distribution checks on data
@@ -162,15 +164,24 @@ ggplot(EW_DV, aes(EWS)) +
   geom_density() +
   theme_bw()
 
-# plot all dPL and dPR to see why EWS is so high
+# plot all dPL and dPR 
 ggplot(EW_DV, aes(dPR, dPL)) +
-  geom_hline(yintercept = .5) +
-  geom_vline(xintercept = .5) +
-  geom_abline(intercept = 0, slope = 1, alpha = .5, linetype = 'dashed') +
-  geom_point(shape = 21) +
+  geom_hline(yintercept = .5, alpha = .5, size = .7) +
+  geom_vline(xintercept = .5, alpha = .5, size = .7) +
+  geom_abline(intercept = 0, slope = 1, alpha = .5, size = .7,
+              linetype = 'dashed') +
+  geom_point(shape = 21, alpha = .8, size = 2) +
   ylim(0,1) + 
   xlim(0,1) +
-  theme_bw()
+  labs(x = 'Right end-point weighting',
+       y = 'Left end-point weighting') +
+  theme_bw() + 
+  theme(axis.title = element_text(size = 12),
+        axis.text = element_text(size = 10)) -> end_points_plot
+end_points_plot
+# save
+ggsave('end_points.png', end_points_plot, device = NULL, path = aPath,
+       width = 7, height = 6, dpi = 600)
 
 # test re-test
 # clearly define conditions in main data set
@@ -224,41 +235,6 @@ pseudo <- merge(pseudo, EWS, by = 'ID')
 # melt
 pseudo <- melt(pseudo, value.name = 'BIAS')
 
-# change variable names for pseudo
-pseudo <- pseudo %>% 
-  rowwise() %>%
-  mutate(
-    NAME = case_when(variable == 'EWB' ~ 'BIAS',
-                     variable == 'DBE' ~ 'ERROR',
-                     variable == 'EWS' ~ 'SUM'
-    ))
-# add h line to the data
-data_hline <- data.frame(NAME = unique(pseudo$NAME),  # Create data for lines
-                         hline = c(0, 0, 1))
-
-# first, plot
-av_plot <- ggplot(pseudo, aes(x = 1, y = BIAS, group = NAME)) +
-  geom_boxjitter(width = .2,errorbar.length = .2, jitter.shape = 21, 
-                 jitter.size = 2, outlier.shape = NA, errorbar.draw = TRUE, 
-                 lwd = 0.7, notch = TRUE) +
-  xlim(.8,1.2) +
-  facet_wrap(~NAME, scales = "free") +
-  labs(x = '', y = 'Measurement') +
-  theme_classic() +
-  theme(axis.ticks.x = element_blank(),
-        axis.text.x = element_blank(),
-        axis.text.y = element_text(size = 12),
-        axis.title = element_text(size = 14),
-        strip.text.x = element_text(size = 12))
-
-av_plot <- av_plot +   geom_hline(data = data_hline,
-             aes(yintercept = hline), alpha = .5)
-av_plot
-
-# save plot
-ggsave('Measurements.png', av_plot, device = NULL, path = aPath,
-       width = 9, height = 5, dpi = 600)
-
 # summarise pseudo
 pseudo_sum <- summarySEwithin(data = pseudo, measurevar = 'BIAS', withinvars = 'variable')
 
@@ -266,6 +242,81 @@ pseudo_sum <- summarySEwithin(data = pseudo, measurevar = 'BIAS', withinvars = '
 # effect size
 pseudo_sum <- pseudo_sum %>%
   mutate(es = BIAS/sd)
+```
+
+# Plot dependent variables
+```{r}
+# change variable names for pseudo
+#pseudo <- pseudo %>% 
+#  rowwise() %>%
+#  mutate(
+#    NAME = case_when(variable == 'EWB' ~ 'BIAS',
+#                     variable == 'DBE' ~ 'ERROR',
+#                     variable == 'EWS' ~ 'SUM'
+#    ))
+
+
+# add h line to the data
+data_hline <- data.frame(variable = unique(pseudo$variable),  # Create data for lines
+                         hline = c(0, 0, 1))
+# ordering
+pseudo$variable <- factor(pseudo$variable, levels = c('EWS','EWB','DBE'))
+# jittering points
+pseudo$xj <- jitter(1, amount = .1)
+
+nudge1 = .12
+nudge2 = -.12
+
+# plot the distribution of all data (and means?)
+ggplot(data = pseudo, aes(group = variable)) +
+  geom_jitter(aes(x = 1, y = BIAS), 
+              width = .05, shape = 21, size = 1.5, alpha = .8) +
+  facet_wrap(~variable, scales = "free") +
+  # violin plots
+  geom_half_violin(data = pseudo %>% filter(variable == 'EWS'),
+                   aes(x = 1, y = BIAS),
+                   position = position_nudge(nudge2)) +
+  geom_half_violin(data = pseudo %>% filter(variable == 'EWB'),
+                   aes(x = 1, y = BIAS),
+                   position = position_nudge(nudge2)) +
+  geom_half_violin(data = pseudo %>% filter(variable == 'DBE'),
+                   aes(x = 1, y = BIAS),
+                   position = position_nudge(nudge2)) +
+  # add summary stats
+  geom_point(data = pseudo_sum,
+             aes(x = 1, y = BIAS),
+             position = position_nudge(nudge2), size = 3.5) +
+  geom_errorbar(data = pseudo_sum,
+                aes(x = 1, ymin = BIAS-ci, ymax = BIAS+ci),
+                width = .03, size = 1, position = position_nudge(nudge2)) +
+  labs(x = '', y = 'Measurement') +
+  theme_classic() +
+  theme(axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(size = 11),
+        axis.title = element_text(size = 12),
+        strip.text.x = element_text(size = 12)) -> m_plot
+  
+
+m_plot <- m_plot +   geom_hline(data = data_hline,
+             aes(yintercept = hline), linetype = 'dashed', alpha = .6)
+m_plot
+
+# arrange with end_point_plot
+## THIS NEEDS EDITING - use grid.arrange?
+m1_plot <- ggarrange(end_points_plot, m_plot,
+                     nrow = 1, ncol = 2,
+                     labels = c('a.','b.'),
+                     widths = c(.5,1),
+                     layout_matrix = (cbind(c(1,NA),
+                                            c(2,2))))
+m1_plot
+
+# save plot
+ggsave('Measurements.png', m_plot, device = NULL, path = aPath,
+       width = 9, height = 5, dpi = 600)
+
+
 ```
 
 # Analysis across blocks
