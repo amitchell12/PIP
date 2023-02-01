@@ -542,7 +542,6 @@ model.EWS <- lm(EWS ~ tone*block, data = EW_DV)
 summary(model.EWS)
 ```
 
-# Further checks
 # Run the same analyses as above, but this time on EWB
 ```{r}
 # colours

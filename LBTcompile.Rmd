@@ -36,6 +36,22 @@ bisect2Data$recruit <- 2
 bisectData <- rbind(bisectData, bisect2Data)
 ```
 
+# Final audio check 1
+Flag participants who did not press '7' at the end of the experiment
+
+```{r}
+# isolate final audio check (coded weirdly in datframe)
+final_audio <- bisectData %>% 
+  filter(is.na(acc)) %>% 
+  select(correct_audio_kbd_final, queryParams_PROLIFIC_PID)
+
+# make sure ID does not have email address attached (whyy?)s
+final_audio$prolific_id <- substr(final_audio$queryParams_PROLIFIC_PID, 1, 24)
+
+# identify all participants who failed final audio check
+id_x <- final_audio$prolific_id[final_audio$correct_audio_kbd_final == 0]
+```
+
 # Main data load and compile
 ```{r}
 # first get an idea of all participants (prolific IDs)
@@ -97,10 +113,12 @@ qual10name <- 'QUALraw_first10.csv'
 bisect10Data <- read.csv(file.path(dPath,dat10name)) 
 bisect10Data$recruit <- 1 
 
-# same filtering as above
-# first get an idea of all participants (prolific IDs)
-nres10 <- aggregate(acc~jatosStudyResultId, length, data=bisect10Data)
-length(nres10$jatosStudyResultId)
+# Final audio check, isolate participants
+final10_audio <- bisect10Data %>% 
+  filter(is.na(acc)) %>% 
+  select(correct_audio_kbd_final, jatosStudyResultId)
+# identify participant who failed final audio check
+jid_x <- final10_audio$jatosStudyResultId[final10_audio$correct_audio_kbd_final == 0]
 
 # n particiants removed who failed audio check/too few trials
 nAudio10 <- dplyr::filter(nres10, acc < 200)
@@ -133,6 +151,13 @@ qual10Data <- qual10Data[, c(2,1,3,4,16)]
 
 # merge with bisection data using jatos IDs to obtain prolific id, to merge data-frames
 dat10 <- merge(qual10Data, dat10, by = 'jatosStudyResultId')
+# remove participant who failed final audio check
+dat10 <- filter(dat10, !(jatosStudyResultId %in% jid_x))
+
+# get an idea of all participants (prolific IDs)
+nres10 <- aggregate(age~jatosStudyResultId, length, data=dat10)
+length(nres10$jatosStudyResultId)
+
 calib10 <- merge(qual10Data, calib10, by = 'jatosStudyResultId')
 # remove unecessary columns from calib10 - to match other calibration
 calib10 <- calib10[, -c(3,4,5)]
@@ -161,6 +186,12 @@ all_dat <- dplyr::filter(all_dat, void_trial == 0 & practice == 0)
 ndat <- aggregate(bisect_x~prolific_id, length, data=bisectData)
 ndat <- ndat[order(ndat$prolific_id) ,] # order by prolific id for easy identification
 # this is the actual number of participants recruited
+length(ndat$prolific_id) 
+
+# remove participants who failed the final audio check
+all_dat <- filter(all_dat, !(prolific_id %in% id_x))
+# N
+ndat <- aggregate(bisect_x~prolific_id, length, data=all_dat)
 length(ndat$prolific_id) 
 
 # count n participants from each round
@@ -197,11 +228,6 @@ all_dat <- all_dat %>%
 
 # remove participants with breaks > 5 minutes
 id_x <- bt$prolific_id[bt$break_time > 301] #this step removes 63 participants! 
-
-# final audio check, correct?
-finalAudio <- bisectData[bisectData$response_audio_kbd_final == 7 ,]
-finalAudio <- finalAudio[, c(225,237)]
-length(finalAudio$queryParams_PROLIFIC_PID)
 
 # remove participants with long breaks from full data set
 # but keep data frame that reserves these participants, because that is a lot
@@ -436,7 +462,7 @@ rate192$av_rate <- (rate192$L_rate+rate192$R_rate)/2
 
 # merge
 all_dat_breaks <- merge(all_dat_breaks, rate192, by = 'prolific_id')
-n <- count(all_dat_breaks, prolific_id)
+n <- count(all_dat_breaks, 'prolific_id')
 length(n$prolific_id)
 ```
 
