@@ -271,7 +271,7 @@ nudge2 = -.12
 # plot the distribution of all data (and means?)
 ggplot(data = pseudo, aes(group = variable)) +
   geom_jitter(aes(x = 1, y = BIAS), 
-              width = .05, shape = 21, size = 1.5, alpha = .8) +
+              width = .05, shape = 21, size = 2.5, alpha = .8) +
   facet_wrap(~variable, scales = "free") +
   # violin plots
   geom_half_violin(data = pseudo %>% filter(variable == 'EWS'),
@@ -286,40 +286,41 @@ ggplot(data = pseudo, aes(group = variable)) +
   # add summary stats
   geom_point(data = pseudo_sum,
              aes(x = 1, y = BIAS),
-             position = position_nudge(nudge2), size = 3.5) +
+             position = position_nudge(nudge2), size = 4) +
   geom_errorbar(data = pseudo_sum,
                 aes(x = 1, ymin = BIAS-ci, ymax = BIAS+ci),
-                width = .03, size = 1, position = position_nudge(nudge2)) +
+                width = .04, size = 1.1, position = position_nudge(nudge2)) +
   labs(x = '', y = 'Measurement') +
   theme_classic() +
   theme(axis.ticks.x = element_blank(),
         axis.text.x = element_blank(),
-        axis.text.y = element_text(size = 11),
-        axis.title = element_text(size = 12),
-        strip.text.x = element_text(size = 12)) -> m_plot
+        axis.text.y = element_text(size = 13),
+        axis.title = element_text(size = 16),
+        strip.text.x = element_text(size = 15)) -> m_plot
   
 
 m_plot <- m_plot +   geom_hline(data = data_hline,
-             aes(yintercept = hline), linetype = 'dashed', alpha = .6)
+             aes(yintercept = hline), linetype = 'dashed', alpha = .6, size = 1.2)
 m_plot
 
 # arrange with end_point_plot
 ## THIS NEEDS EDITING - use grid.arrange?
-m1_plot <- ggarrange(end_points_plot, m_plot,
-                     nrow = 1, ncol = 2,
-                     labels = c('a.','b.'),
-                     widths = c(.5,1),
-                     layout_matrix = (cbind(c(1,NA),
-                                            c(2,2))))
-m1_plot
+#m1_plot <- ggarrange(end_points_plot, m_plot,
+#                     nrow = 1, ncol = 2,
+#                     labels = c('a.','b.'),
+#                     widths = c(.5,1),
+#                     layout_matrix = (cbind(c(1,NA),
+#                                            c(2,2))))
+#m1_plot
 
 # save plot
 ggsave('Measurements.png', m_plot, device = NULL, path = aPath,
-       width = 9, height = 5, dpi = 600)
+       width = 10, height = 5.5, dpi = 600)
 
 
 ```
 
+# Hypothesis 1 - EWS
 # Analysis across blocks
 ```{r}
 # colour
@@ -384,7 +385,7 @@ ggplot(tonic_diff) +
  #xlim(-.025,.025) +
   ylim(-.05,.05) +
   labs(x = '', y = 'Difference (Block 2 - Block 1)') +
-  scale_x_continuous(breaks = 0, labels = 'SUM') +
+  scale_x_continuous(breaks = 0, labels = 'EWS') +
   theme_classic() +
   theme(axis.title = element_text(size = 14),
         axis.text = element_text(size = 12))-> tonic_diff_plot
@@ -392,14 +393,15 @@ ggplot(tonic_diff) +
 tonic_all <- ggarrange(tonic_plot, tonic_diff_plot,
           ncol = 2, nrow = 1,
           widths = c(1, 0.5))
-tonic_all <- annotate_figure(tonic_all, 
-                             top = text_grob("SUM: Time on Task", size = 14))
+#tonic_all <- annotate_figure(tonic_all, 
+#                             top = text_grob("SUM: Time on Task", size = 14))
 tonic_all
 
 # saving
 ggsave('TOTwTONE-plot.png', tonic_all, device = NULL, path = aPath,
        width = 9, height = 5, dpi = 600)
 ```
+
 # Analysis across tones
 ```{r}
 # colour
@@ -470,7 +472,7 @@ ggplot(phasic_diff) +
  #xlim(-.025,.025) +
   ylim(-.05,.05) +
   labs(x = '', y = 'Difference (Tone - No tone)') +
-  scale_x_continuous(breaks = 0, labels = 'SUM') +
+  scale_x_continuous(breaks = 0, labels = 'EWS') +
   theme_classic() +
   theme(axis.title = element_text(size = 14),
         axis.text = element_text(size = 12))-> phasic_diff_plot
@@ -478,8 +480,8 @@ ggplot(phasic_diff) +
 phasic_all <- ggarrange(phasic_plot, phasic_diff_plot,
           ncol = 2, nrow = 1,
           widths = c(1, 0.5))
-phasic_all <- annotate_figure(phasic_all, 
-                             top = text_grob("SUM: Tone", size = 14))
+#phasic_all <- annotate_figure(phasic_all, 
+#                             top = text_grob("SUM: Tone", size = 14))
 phasic_all
 
 # saving
@@ -487,63 +489,13 @@ ggsave('TONE-plot.png', phasic_all, device = NULL, path = aPath,
        width = 9, height = 5, dpi = 600)
 ```
 
-# Plot the interaction effect
-Summary results across all four conditions
+# Combine tonic and phasic EWS plots for manuscript
 ```{r}
-all_cond_wide <- phasic_wide[, c(1:5) ,]
-# melt
-all_cond <- melt(all_cond_wide, value.name = 'EWS')
-# transform variable to numerical
-all_cond <- all_cond %>% 
-  rowwise() %>%
-  mutate(
-    COND = case_when(variable == 'EARLY_BLANK' ~ '1',
-                     variable == 'EARLY_SOUND' ~ '2',
-                     variable == 'LATE_BLANK' ~ '3',
-                     variable == 'LATE_SOUND' ~ '4'
-           ))
-all_cond$BLOCK <- ifelse(all_cond$COND == '1' | all_cond$COND == '2', '1', '2')
-all_cond$TONE <- ifelse(all_cond$COND == '1' | all_cond$COND == '3', '1', '2')
-all_cond$BLOCK <- as.factor(all_cond$BLOCK)
-all_cond$TONE <- as.factor(all_cond$TONE)
-
-# summarise
-sum_all <- summarySEwithin(all_cond, measurevar = 'EWS', withinvars = 'COND')
-# identify blocks and tones
-sum_all$BLOCK <- ifelse(sum_all$COND == '1' | sum_all$COND == '2', 'Early', 'Late')
-sum_all$TONE <- ifelse(sum_all$COND == '1' | sum_all$COND == '3', 'No tone', 'Tone')
-
-# plot this bad boy
-ggplot(sum_all, aes(BLOCK, EWS, group = TONE, colour = TONE)) +
-  geom_point(position = position_dodge(.2), size = 3) +
-  geom_errorbar(aes(BLOCK, ymin = EWS-ci, ymax = EWS+ci),
-                position = position_dodge(.2), width = .1, size = 0.75) +
-  geom_line(aes(x = BLOCK, y = EWS), 
-            size = 1, position = position_dodge(.2)) +
-  scale_colour_manual(values = c(grees[4], grees[7])) +
-  ylim(0.97, 1.05) +
-  labs(x = '') +
-  theme_bw() +
-  theme(legend.title = element_blank(),
-        legend.position = 'right',
-        axis.title = element_text(size = 14),
-        axis.text = element_text(size = 12),
-        title = element_text(size = 14),
-        legend.text = element_text(size = 12)) -> inter_plot
-inter_plot
-
-ggsave('Interact_plot.png', inter_plot, device = NULL, path = aPath,
-       width = 6, height = 4, dpi = 600)
-
-# linear regression of interaction
-EW_DV$tone <- as.factor(EW_DV$tone)
-EW_DV$block <- as.factor(EW_DV$block)
-
-model.EWS <- lm(EWS ~ tone*block, data = EW_DV)
-summary(model.EWS)
 ```
 
+
 # Run the same analyses as above, but this time on EWB
+# Hypothesis 2
 ```{r}
 # colours
 purps <- brewer.pal(9, "Purples")
@@ -657,6 +609,66 @@ phasic_bias_diff <- phasic_bias_diff %>% mutate(es = DIFF/sd)
 
 tone_bias_test <- t.test(phasic_bias_wide$DIFF, mu = 0, alternative = 'less')
 tone_bias_test
+```
+
+# Combine tonic and phasic EWB plots for manuscript
+```{r}
+```
+
+##### EXPLORATORY ANALYSES #####
+# Interaction effects for EWS
+```{r}
+all_cond_wide <- phasic_wide[, c(1:5) ,]
+# melt
+all_cond <- melt(all_cond_wide, value.name = 'EWS')
+# transform variable to numerical
+all_cond <- all_cond %>% 
+  rowwise() %>%
+  mutate(
+    COND = case_when(variable == 'EARLY_BLANK' ~ '1',
+                     variable == 'EARLY_SOUND' ~ '2',
+                     variable == 'LATE_BLANK' ~ '3',
+                     variable == 'LATE_SOUND' ~ '4'
+           ))
+all_cond$BLOCK <- ifelse(all_cond$COND == '1' | all_cond$COND == '2', '1', '2')
+all_cond$TONE <- ifelse(all_cond$COND == '1' | all_cond$COND == '3', '1', '2')
+all_cond$BLOCK <- as.factor(all_cond$BLOCK)
+all_cond$TONE <- as.factor(all_cond$TONE)
+
+# summarise
+sum_all <- summarySEwithin(all_cond, measurevar = 'EWS', withinvars = 'COND')
+# identify blocks and tones
+sum_all$BLOCK <- ifelse(sum_all$COND == '1' | sum_all$COND == '2', 'Early', 'Late')
+sum_all$TONE <- ifelse(sum_all$COND == '1' | sum_all$COND == '3', 'No tone', 'Tone')
+
+# plot this bad boy
+ggplot(sum_all, aes(BLOCK, EWS, group = TONE, colour = TONE)) +
+  geom_point(position = position_dodge(.2), size = 3) +
+  geom_errorbar(aes(BLOCK, ymin = EWS-ci, ymax = EWS+ci),
+                position = position_dodge(.2), width = .1, size = 0.75) +
+  geom_line(aes(x = BLOCK, y = EWS), 
+            size = 1, position = position_dodge(.2)) +
+  scale_colour_manual(values = c(grees[4], grees[7])) +
+  ylim(0.97, 1.05) +
+  labs(x = '') +
+  theme_bw() +
+  theme(legend.title = element_blank(),
+        legend.position = 'right',
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12),
+        title = element_text(size = 14),
+        legend.text = element_text(size = 12)) -> inter_plot
+inter_plot
+
+ggsave('Interact_plot.png', inter_plot, device = NULL, path = aPath,
+       width = 6, height = 4, dpi = 600)
+
+# linear regression of interaction
+EW_DV$tone <- as.factor(EW_DV$tone)
+EW_DV$block <- as.factor(EW_DV$block)
+
+model.EWS <- lm(EWS ~ tone*block, data = EW_DV)
+summary(model.EWS)
 ```
 
 # Bias difference - in tone trials

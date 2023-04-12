@@ -400,7 +400,7 @@ length(cal_x)
 ```
 
 # Remove participants who did not pass calibration step
-# A total of 17+44 = 61 participants removed for poor calibration, ouch
+# A total of 33 participants removed for poor calibration, ouch
 Obtain N for analysis (& power)
 ```{r}
 # remove participants who failed calib check from current data-set
