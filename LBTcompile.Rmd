@@ -121,7 +121,7 @@ final10_audio <- bisect10Data %>%
 jid_x <- final10_audio$jatosStudyResultId[final10_audio$correct_audio_kbd_final == 0]
 
 # n particiants removed who failed audio check/too few trials
-nAudio10 <- dplyr::filter(nres10, acc < 200)
+#nAudio10 <- dplyr::filter(nres10, acc < 200)
 #id_x10 <- nAudio10$jatosStudyResultId #identifying participants to be removed
 # count void trials
 void10 <- dplyr::filter(bisect10Data, void_trial == 1)
@@ -176,7 +176,7 @@ wholeFile = paste(aPath, 'LBT_all-compiled-data.csv', sep = '/')
 write.csv(all_dat, wholeFile, row.names = FALSE)
 ```
 
-# First data quality checks
+# First data quality checks - remove those who failed final audio check
 ```{r}
 # filter trials so audio = passed, this removes audio step and filters participants who failed
 all_dat <- dplyr::filter(all_dat, audio_passed == 1)
@@ -201,7 +201,10 @@ nRec1 <- all_dat %>%
 nRec2 <- all_dat %>% 
   filter(recruit == 2) %>% 
   count('prolific_id')
+```
 
+# Further participant removal - breaks and repeat trials
+```{r}
 # define some key criteria
 # extract variables of interest for quality checks
 # first response time to line in ms
@@ -227,7 +230,7 @@ all_dat <- all_dat %>%
   distinct(count_line_mouse_response, .keep_all = TRUE)
 
 # remove participants with breaks > 5 minutes
-id_x <- bt$prolific_id[bt$break_time > 301] #this step removes 63 participants! 
+id_x <- bt$prolific_id[bt$break_time > 301] 
 
 # remove participants with long breaks from full data set
 # but keep data frame that reserves these participants, because that is a lot
@@ -239,16 +242,14 @@ length(nvalid$prolific_id)
 ```
 
 # Screen calibration
-Check and remove participants where calib and dot locations do not match 
-Criteria:
-
+# Create criteria
 ```{r}
 # Calibration check
 # First bind two calibration files
 calib_dat <- rbind(calib_dat, calib10)
 # check numbers - do they match above
 ncalib <- count(calib_dat, 'prolific_id')
-length(ncalib$prolific_id) # yes, there are 142 prolific ids here (total we started with)
+length(ncalib$prolific_id) 
 
 # only include participants that have been included in all_dat
 calib_dat1 <- filter(calib_dat, (prolific_id %in% all_dat_breaks$prolific_id))
@@ -336,16 +337,21 @@ y_plot <- ggplot(
   geom_point() +
   scale_shape_manual(values = c(3, 1)) +
   facet_wrap(~ID)
+#x_plot
+#y_plot
+```
 
+# then remove participants - calibration step
+```{r}
 # FIRST - remove the participants with a lot of NAs & mid-NAs
 calib_points <- filter(calib_points, !(prolific_id %in% cal_x))
 n <- count(calib_points, 'prolific_id')
 length(n$prolific_id)
-# this step removed 11 further participants from data-set
+# this step removes a further 17 participants
 
+# Now getting calib fits
 # Regressing calibration values
 # get data for linear regression
-# group by COND
 CLK <- dplyr::filter(calib_points, COND == 'cal')
 DOT <- dplyr::filter(calib_points, COND == 'dot')
 names(CLK)[5] <- 'LOC_CLK'
@@ -365,11 +371,6 @@ CALFIT2 <- CALFIT %>%
   mutate(pred = predict(fit, .)) %>%
   # Replace NA with pred in var1
   mutate(LOC_CLK = ifelse(is.na(LOC_CLK), pred, LOC_CLK))
-
-# this step is good but it does not change anything - boo
-
-# plot again to see if this improves things
-
 
 calibR <- read.csv(text = c('prolific_id,NUMTRIALS,RSQ'))
 # recode ID
@@ -395,9 +396,11 @@ calibR$FILTER <- calibR$RSQ < .90
 # adding to ID_X data-frame for later removal
 cal_x <- append(cal_x, as.character(calibR[calibR$FILTER == TRUE, "prolific_id"]))
 length(cal_x)
+# further 44 participants identified as poorly calibrated
 ```
 
 # Remove participants who did not pass calibration step
+# A total of 17+44 = 61 participants removed for poor calibration, ouch
 Obtain N for analysis (& power)
 ```{r}
 # remove participants who failed calib check from current data-set

@@ -48,10 +48,11 @@ all_plot <- ggplot(bisect_check, aes(group = as.factor(offset), colour = as.fact
   theme_bw() +
   facet_wrap(~prolific_id)
 all_plot
+```
 
-
-# some more filtering
-# remove trials with response > 3000ms
+# some more filtering - remove participants with too few trials
+```{r}
+# remove all trials with response > 3000ms
 all_dat <- dplyr::filter(all_dat, response_time < 3000)
 
 # identify any participants with too few trials, less than 32 per condition
