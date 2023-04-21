@@ -662,20 +662,18 @@ phasic_bias_all
 
 # Combine all EWS and EWB plots for manuscript
 ```{r}
-TONplot <- ggarrange(tonic_all, tonic_bias_all,
-                      ncol = 1, nrow = 2)
-annotate_figure(TONplot, top = text_grob("Tonic Alertness", size = 12))
+EWSplot <- ggarrange(tonic_all, phasic_all,
+                     ncol = 1, nrow = 2,
+                     labels = c('a.','b.'))
 
-PHAplot <- ggarrange(phasic_all, phasic_bias_all,
-                      ncol = 1, nrow = 2)
-annotate_figure(PHAplot, top = text_grob("Phasic Alertness", size = 12))
+EWBplot <- ggarrange(tonic_bias_all, phasic_bias_all,
+                     ncol = 1, nrow = 2,
+                     labels = c('a.','b.'))
 
-Figure3 <- ggarrange(TONplot, PHAplot,
-                     ncol = 2, nrow = 1)
-Figure3
-
-ggsave('EWS_fig3.png', Figure3, device = NULL, path = aPath,
-       width = 11, height = 8, dpi = 600)
+ggsave('EWS_fig3.png', EWSplot, device = NULL, path = aPath,
+       width = 6, height = 8, dpi = 600)
+ggsave('EWS_fig4.png', EWBplot, device = NULL, path = aPath,
+       width = 6, height = 8, dpi = 600)
 ```
 
 ##### EXPLORATORY ANALYSES #####
@@ -734,8 +732,8 @@ ggplot(sum_all, aes(BLOCK, EWS, group = TONE, colour = TONE)) +
                 position = position_dodge(.2), width = .1, size = 0.75) +
   geom_line(aes(x = BLOCK, y = EWS), 
             size = 1, position = position_dodge(.2)) +
-  scale_colour_manual(values = c(grees[4], grees[7])) +
-  ylim(0.97, 1.05) +
+  scale_colour_manual(values = c('grey70', 'grey20')) +
+  ylim(0.98, 1.05) +
   labs(x = '') +
   theme_bw() +
   theme(legend.title = element_blank(),
@@ -745,9 +743,6 @@ ggplot(sum_all, aes(BLOCK, EWS, group = TONE, colour = TONE)) +
         title = element_text(size = 14),
         legend.text = element_text(size = 12)) -> inter_plot
 inter_plot
-
-ggsave('Interact_plot.png', inter_plot, device = NULL, path = aPath,
-       width = 6, height = 4, dpi = 600)
 ```
 
 # Interaction effects for EWS
@@ -804,8 +799,8 @@ ggplot(sum_bias_all, aes(BLOCK, EWB, group = TONE, colour = TONE)) +
                 position = position_dodge(.2), width = .1, size = 0.75) +
   geom_line(aes(x = BLOCK, y = EWB), 
             size = 1, position = position_dodge(.2)) +
-  scale_colour_manual(values = c(purps[4], purps[7])) +
-  ylim(-.03, .02) +
+  scale_colour_manual(values = c('grey70', 'grey20')) +
+  ylim(-.05, .01) +
   labs(x = '') +
   theme_bw() +
   theme(legend.title = element_blank(),
@@ -815,9 +810,18 @@ ggplot(sum_bias_all, aes(BLOCK, EWB, group = TONE, colour = TONE)) +
         title = element_text(size = 14),
         legend.text = element_text(size = 12)) -> inter_bias_plot
 inter_bias_plot
-
-ggsave('Interact_bias_plot.png', inter_bias_plot, device = NULL, path = aPath,
-       width = 6, height = 4, dpi = 600)
+```
+# combine the two plots
+```{r}
+explPlot <- ggarrange(inter_plot, inter_bias_plot,
+                      ncol = 2, nrow = 1,
+                      labels = c('a.','b.'),
+                      common.legend = TRUE,
+                      legend = 'bottom')
+explPlot
+# save
+ggsave('EWS_fig5.png', explPlot, device = NULL, path = aPath,
+       width = 7, height = 4, dpi = 600)
 ```
 
 ## REACTION TIMES
