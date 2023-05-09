@@ -382,6 +382,7 @@ block_test
 tonic_diff <- summarySE(data = tonic_wide, measurevar = 'DIFF', na.rm = TRUE)
 # get effect size
 tonic_diff <- tonic_diff %>% mutate(es = DIFF/sd)
+tonic_diff
 
 ggplot(tonic_diff) +
   geom_hline(aes(yintercept = 0), colour = 'gray50', size = 1, 
@@ -468,6 +469,7 @@ tone_test
 phasic_diff <- summarySE(data = phasic_wide, measurevar = 'DIFF', na.rm = TRUE)
 # get effect size
 phasic_diff <- phasic_diff %>% mutate(es = DIFF/sd)
+phasic_diff
 
 ggplot(phasic_diff) +
   geom_hline(aes(yintercept = 0), colour = 'gray50', 
@@ -558,6 +560,7 @@ tonic_bias_diff <- summarySE(data = tonic_bias, measurevar = 'DIFF', na.rm = TRU
 
 # get effect size
 tonic_bias_diff <- tonic_bias_diff %>% mutate(es = DIFF/sd)
+tonic_bias_diff
 
 # now plot difference and put together!
 ggplot(tonic_bias_diff) +
@@ -634,6 +637,7 @@ phasic_bias_wide$DIFF <- phasic_bias_wide$SOUND - phasic_bias_wide$BLANK
 # get effect size
 phasic_bias_diff <- summarySE(data = phasic_bias_wide, measurevar = 'DIFF', na.rm = TRUE)
 phasic_bias_diff <- phasic_bias_diff %>% mutate(es = DIFF/sd)
+phasic_bias_diff
 
 tone_bias_test <- t.test(phasic_bias_wide$DIFF, mu = 0, alternative = 'less')
 tone_bias_test
@@ -701,6 +705,7 @@ sum_all <- summarySEwithin(all_cond, measurevar = 'EWS', withinvars = 'COND')
 # identify blocks and tones
 sum_all$BLOCK <- ifelse(sum_all$COND == '1' | sum_all$COND == '2', 'Early', 'Late')
 sum_all$TONE <- ifelse(sum_all$COND == '1' | sum_all$COND == '3', 'No tone', 'Tone')
+sum_all
 
 # ANOVA of all effects
 EWSanov <- ezANOVA(
@@ -715,9 +720,9 @@ EWSanov <- ezANOVA(
 
 #print(EWSanov$ANOVA)
 
-EWSanov$ANOVA
-EWSanov$`Mauchly's Test for Sphericity`
-EWSanov$`Sphericity Corrections`
+#EWSanov$ANOVA
+#EWSanov$`Mauchly's Test for Sphericity`
+#EWSanov$`Sphericity Corrections`
 aovEWS <- aovEffectSize(EWSanov, effectSize = "pes")
 aovDispTable(aovEWS)
 
@@ -737,7 +742,7 @@ ggplot(sum_all, aes(BLOCK, EWS, group = TONE, colour = TONE)) +
   labs(x = '') +
   theme_bw() +
   theme(legend.title = element_blank(),
-        legend.position = 'right',
+        legend.position = 'none',
         axis.title = element_text(size = 14),
         axis.text = element_text(size = 12),
         title = element_text(size = 14),
@@ -783,9 +788,9 @@ EWBanov <- ezANOVA(
 
 #print(EWSanov$ANOVA)
 
-EWBanov$ANOVA
-EWBanov$`Mauchly's Test for Sphericity`
-EWBanov$`Sphericity Corrections`
+#EWBanov$ANOVA
+#EWBanov$`Mauchly's Test for Sphericity`
+#EWBanov$`Sphericity Corrections`
 aovEWB <- aovEffectSize(EWBanov, effectSize = "pes")
 aovDispTable(aovEWB)
 ```
@@ -804,36 +809,128 @@ ggplot(sum_bias_all, aes(BLOCK, EWB, group = TONE, colour = TONE)) +
   labs(x = '') +
   theme_bw() +
   theme(legend.title = element_blank(),
-        legend.position = 'right',
+        legend.position = 'none',
         axis.title = element_text(size = 14),
         axis.text = element_text(size = 12),
         title = element_text(size = 14),
         legend.text = element_text(size = 12)) -> inter_bias_plot
 inter_bias_plot
 ```
-# combine the two plots
-```{r}
-explPlot <- ggarrange(inter_plot, inter_bias_plot,
-                      ncol = 2, nrow = 1,
-                      labels = c('a.','b.'),
-                      common.legend = TRUE,
-                      legend = 'bottom')
-explPlot
-# save
-ggsave('EWS_fig5.png', explPlot, device = NULL, path = aPath,
-       width = 7, height = 4, dpi = 600)
-```
 
 ## REACTION TIMES
-Run the same AVNOA on reaction time data
+Run the same ANOVA on reaction time data
 
 # Extracting reaction times
 ```{r}
+# plot all RT, are they skewed?
+ggplot(all_dat) +
+  geom_density(aes(response_time)) +
+  theme_bw()
+# yes, should use median, but will record mean anyway
 
+# average reaction time across trials
+rt_dat <- aggregate(response_time~ID*block*pip, mean, data = all_dat)
+
+# add median RT
+med <- aggregate(response_time~ID*block*pip, median, data = all_dat)
+# rename
+med <- med %>% 
+  rename(RT_med = response_time)
+
+# compile and rename
+rt_dat <- rt_dat %>% 
+  left_join(med, by = c('ID', 'block', 'pip')) %>% 
+  rename(BLOCK = block,
+          TONE = pip,
+          RT_mean = response_time) %>% 
+  mutate(TONE = ifelse(TONE == 0, 'No tone', 'Tone'),
+         BLOCK = ifelse(BLOCK == 'EARLY', 'Early', 'Late'),
+         COND = case_when(BLOCK == 'Early' & TONE == 'No tone' ~ '1',
+                     BLOCK == 'Early' & TONE == 'Tone' ~ '2',
+                     BLOCK == 'Late' & TONE == 'No tone' ~ '3',
+                     BLOCK == 'Late' & TONE == 'Tone' ~ '4'
+           )) 
+head(rt_dat)
+```
+# Summary and RT ANOVA
+```{r}
+# summarise
+sum_rt <- summarySEwithin(rt_dat, measurevar = 'RT_med', withinvars = 'COND')
+# identify blocks and tones
+sum_rt$BLOCK <- ifelse(sum_rt$COND == '1' | sum_rt$COND == '2', 'Early', 'Late')
+sum_rt$TONE <- ifelse(sum_rt$COND == '1' | sum_rt$COND == '3', 'No tone', 'Tone')
+sum_rt
+
+# factors
+rt_dat$ID <- as.factor(rt_dat$ID)
+rt_dat$BLOCK <- as.factor(rt_dat$BLOCK)
+rt_dat$TONE <- as.factor(rt_dat$TONE)
+# ANOVA of RT
+RTanov <- ezANOVA(
+  data = rt_dat
+  , dv = .(RT_med)
+  , wid = .(ID)
+  , within = .(BLOCK, TONE)
+  , type = 3,
+  return_aov = TRUE,
+  detailed = TRUE
+)
+
+#print(EWSanov$ANOVA)
+
+#EWBanov$ANOVA
+#EWBanov$`Mauchly's Test for Sphericity`
+#EWBanov$`Sphericity Corrections`
+aovRT <- aovEffectSize(RTanov, effectSize = "pes")
+aovDispTable(aovRT)
 ```
 
+# ANOVA figure
+```{r}
+# change RT to second for plotting purposes
+sum_rts <- sum_rt %>% 
+  mutate(RT_med = RT_med/1000,
+         sd = sd/1000,
+         ci = ci/1000,
+         se = se/1000)
+
+ggplot(sum_rts, aes(BLOCK, RT_med, group = TONE, colour = TONE)) +
+  geom_point(position = position_dodge(.2), size = 3) +
+  geom_errorbar(aes(BLOCK, ymin = RT_med-ci, ymax = RT_med+ci),
+                position = position_dodge(.2), width = .1, size = 0.75) +
+  geom_line(aes(x = BLOCK, y = RT_med), 
+            size = 1, position = position_dodge(.2)) +
+  scale_colour_manual(values = c('grey70', 'grey20')) +
+  ylim(1.4, 1.8) +
+  labs(x = '', y = 'Reaction time (sec)') +
+  theme_bw() +
+  theme(legend.title = element_blank(),
+        legend.position = 'right',
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12),
+        title = element_text(size = 14),
+        legend.text = element_text(size = 12)) -> inter_rt_plot
+inter_rt_plot
+```
 
 # Combine all exploratory results figures into one for publication
 ```{r}
+explPlot1 <- ggarrange(inter_plot, inter_bias_plot,
+                       ncol = 2, nrow = 1,
+                       labels = c('a.','b.'))
 
+explPlot2 <- ggarrange(NA, inter_rt_plot, NA,
+                      ncol = 3, nrow = 1,
+                      labels = c('', 'c.',''),
+                      widths = c(.01,.70,.33),
+                      hjust = .3)
+
+explPlot <- ggarrange(explPlot1, explPlot2,
+                      ncol = 1, nrow = 2)
+explPlot
+
+# save
+ggsave('EWS_fig5.png', explPlot, device = NULL, path = aPath,
+       width = 6.5, height = 6, dpi = 600)
 ```
+
