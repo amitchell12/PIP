@@ -292,7 +292,7 @@ ggplot(data = pseudo, aes(group = variable)) +
   geom_errorbar(data = pseudo_sum,
                 aes(x = 1, ymin = BIAS-ci, ymax = BIAS+ci),
                 width = .04, size = 1.1, position = position_nudge(nudge2)) +
-  labs(x = '', y = 'Measurement') +
+  labs(x = NULL, y = NULL) +
   theme_classic() +
   theme(axis.ticks.x = element_blank(),
         axis.text.x = element_blank(),
