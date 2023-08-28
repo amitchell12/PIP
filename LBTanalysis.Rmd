@@ -374,7 +374,7 @@ names(tonic_wide)[2] <- 'EARLY'
 names(tonic_wide)[3] <- 'LATE'
 # difference between early and late
 tonic_wide$DIFF <- tonic_wide$LATE - tonic_wide$EARLY
-block_test <- t.test(tonic_wide$DIFF, mu = 0, alternative = 'less')
+block_test <- t.test(tonic_wide$DIFF, mu = 0, alternative = 'two.sided')
 block_test
 
 # now plot difference and put together!
@@ -461,7 +461,7 @@ ggplot(phasic, aes(group = ID, colour = as.factor(tone), fill = as.factor(tone))
 # difference between early and late
 phasic_wide$DIFF <- phasic_wide$SOUND - phasic_wide$BLANK
 #phasic_wide$DIFF <- phasic_wide$EARLY_SOUND - phasic_wide$EARLY_BLANK
-tone_test <- t.test(phasic_wide$DIFF, mu = 0, alternative = 'greater')
+tone_test <- t.test(phasic_wide$DIFF, mu = 0, alternative = 'two.sided')
 tone_test
 
 # now plot difference and put together!
@@ -553,7 +553,7 @@ names(tonic_bias)[2] <- 'EARLY'
 names(tonic_bias)[3] <- 'LATE'
 # difference between early and late
 tonic_bias$DIFF <- tonic_bias$EARLY - tonic_bias$LATE
-block_bias_test <- t.test(tonic_bias$DIFF, mu = 0, alternative = 'greater')
+block_bias_test <- t.test(tonic_bias$DIFF, mu = 0, alternative = 'two.sided')
 block_bias_test
 
 tonic_bias_diff <- summarySE(data = tonic_bias, measurevar = 'DIFF', na.rm = TRUE)
@@ -639,7 +639,7 @@ phasic_bias_diff <- summarySE(data = phasic_bias_wide, measurevar = 'DIFF', na.r
 phasic_bias_diff <- phasic_bias_diff %>% mutate(es = DIFF/sd)
 phasic_bias_diff
 
-tone_bias_test <- t.test(phasic_bias_wide$DIFF, mu = 0, alternative = 'less')
+tone_bias_test <- t.test(phasic_bias_wide$DIFF, mu = 0, alternative = 'two.sided')
 tone_bias_test
 
 # now plot difference and put together!
