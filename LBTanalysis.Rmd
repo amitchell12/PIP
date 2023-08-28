@@ -552,7 +552,7 @@ tonic_bias <- dcast(tonic, ID ~ block, value.var = "EWB")
 names(tonic_bias)[2] <- 'EARLY'
 names(tonic_bias)[3] <- 'LATE'
 # difference between early and late
-tonic_bias$DIFF <- tonic_bias$EARLY - tonic_bias$LATE
+tonic_bias$DIFF <- tonic_bias$LATE - tonic_bias$EARLY
 block_bias_test <- t.test(tonic_bias$DIFF, mu = 0, alternative = 'two.sided')
 block_bias_test
 
@@ -659,8 +659,7 @@ ggplot(phasic_bias_diff) +
 phasic_bias_all <- ggarrange(phasic_bias_plot, phasicB_diff_plot,
           ncol = 2, nrow = 1,
           widths = c(1, 0.5))
-phasic_bias_all <- annotate_figure(phasic_bias_all, 
-                             top = text_grob("BIAS: Tone", size = 14))
+
 phasic_bias_all
 ```
 
