@@ -21,9 +21,10 @@ library(psychReport)
 
 # Load data
 ```{r}
-aPath <- '/Users/au706616/Documents/Experiments/PIPTOT/analysis/'
+#aPath <- '/Users/au706616/Documents/Experiments/PIPTOT/analysis/'
+
 fileName <- 'LBT_compiled-data.csv'
-all_dat <- read.csv(file.path(aPath,fileName)) 
+all_dat <- read.csv(file.path('data',fileName)) 
 ```
 
 ```{r}
@@ -183,7 +184,7 @@ ggplot(EW_DV, aes(dPR, dPL)) +
         axis.text = element_text(size = 10)) -> end_points_plot
 end_points_plot
 # save
-ggsave('end_points.png', end_points_plot, device = NULL, path = aPath,
+ggsave('end_points.png', end_points_plot, device = NULL, path = file.path('analysis'),
        width = 7, height = 6, dpi = 600)
 
 # test re-test
@@ -316,7 +317,7 @@ m_plot
 #m1_plot
 
 # save plot
-ggsave('EWS_fig3.png', m_plot, device = NULL, path = aPath,
+ggsave('EWS_fig3.png', m_plot, device = NULL, path = file.path('analysis'),
        width = 10, height = 5.5, dpi = 600)
 
 
@@ -496,9 +497,6 @@ phasic_all
 # Run the same analyses as above, but this time on EWB
 # Tonic
 ```{r}
-# colours
-purps <- brewer.pal(9, "Purples")
-orans <- brewer.pal(9, "Oranges")
 # across blocks
 # isolate silent trials only
 sum_tonic_bias <- summarySEwithin(data = tonic, measurevar = 'EWB', withinvars = 'block')
@@ -661,9 +659,9 @@ EWBplot <- ggarrange(tonic_bias_all, phasic_bias_all,
                      ncol = 1, nrow = 2,
                      labels = c('a.','b.'))
 
-ggsave('EWS_fig4.png', EWSplot, device = NULL, path = aPath,
+ggsave('EWS_fig4.png', EWSplot, device = NULL, path = file.path('analysis'),
        width = 6, height = 8, dpi = 600)
-ggsave('EWS_fig5.png', EWBplot, device = NULL, path = aPath,
+ggsave('EWS_fig5.png', EWBplot, device = NULL, path = file.path('analysis'),
        width = 6, height = 8, dpi = 600)
 ```
 
@@ -937,7 +935,7 @@ explPlot <- ggarrange(explPlot1, explPlot2,
 explPlot
 
 # save
-ggsave('EWS_fig6.png', explPlot, device = NULL, path = aPath,
+ggsave('EWS_fig6.png', explPlot, device = NULL, path = file.path('analysis'),
        width = 6.5, height = 6, dpi = 600)
 ```
 

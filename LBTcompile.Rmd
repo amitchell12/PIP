@@ -17,17 +17,16 @@ library(lme4)
 
 # Setting paths for raw data and analysis
 ```{r}
-dPath <- '/Users/au706616/Documents/Experiments/PIPTOT/LBTraw'
-aPath <- '/Users/au706616/Documents/Experiments/PIPTOT/analysis/'
+#dPath <- '/Users/au706616/Documents/Experiments/PIPTOT/LBTraw'
+#aPath <- '/Users/au706616/Documents/Experiments/PIPTOT/analysis/'
 
 datname <- 'LBTraw_final.csv'
 dat2name <- 'LBTraw_final2.csv'
 qualname <- 'QUALraw_final2.csv'
 
 # load raw and qual data
-bisectData <- read.csv(file.path(dPath,datname)) 
-bisect2Data <- read.csv(file.path(dPath,dat2name)) #another data set with extra 85 participants (due to data-loss)
-qualData <- read.csv(file.path(dPath,qualname)) 
+bisectData <- read.csv(file.path('data/LBTraw', datname)) 
+bisect2Data <- read.csv(file.path('data/LBTraw',dat2name)) #another data set with extra 85 participants (due to data-loss)
 
 # flag first and second recruitment rounds
 bisectData$recruit <- 1
@@ -79,7 +78,7 @@ calib_dat <- bisectData[, c(224,17:34,172:189,281,287,208)]
 ## Qualitative data
 # Load and merge with qualitative data
 ## Qualitative data
-qualData <- read.csv(file.path(dPath,qualname)) 
+qualData <- read.csv(file.path('data/LBTraw', qualname)) 
 
 # first, some renaming and reorganising of the qual data
 names(qualData)[1] <- 'consent'
@@ -110,7 +109,7 @@ dat10name <- 'LBTraw_first10.csv'
 qual10name <- 'QUALraw_first10.csv'
 
 # first only load the raw data because demographic is a little useless at this stage
-bisect10Data <- read.csv(file.path(dPath,dat10name)) 
+bisect10Data <- read.csv(file.path('data/LBTraw', dat10name)) 
 bisect10Data$recruit <- 1 
 
 # Final audio check, isolate participants
@@ -131,9 +130,12 @@ dat10 <- bisect10Data[, c(6,11,12,26,271,201,202,256,257,204,36,37,45,81,154,155
                           198,206:208,212,213,215,218,219,224,237,326,330,294,296,297,
                           359,361,123,358,362)]
 calib10 <- bisect10Data[, c(17:34,162:179,263,269,198)]
+```
 
+
+```{r}
 ## Qualitative data
-qual10Data <- read.csv(file.path(dPath,qual10name)) 
+qual10Data <- read.csv(file.path('data/LBTraw',qual10name)) 
 # flag PIDs with no code & no data
 nPID <- c('611e1eee7989eadcee23045c', '6025df3ed83eed206142329a', '6130d846086f43ecd225d128')
 # qualitative data
@@ -172,7 +174,7 @@ nvalid <- count(all_dat, 'prolific_id')
 length(nvalid$prolific_id)
 
 # save entire data-frame (before quality checks)
-wholeFile = paste(aPath, 'LBT_all-compiled-data.csv', sep = '/')
+wholeFile = paste('data', 'LBT_all-compiled-data.csv', sep = '/')
 write.csv(all_dat, wholeFile, row.names = FALSE)
 ```
 
@@ -472,7 +474,7 @@ length(n$prolific_id)
 # Saving!
 Save all_dat and calib_dat dataframes
 ```{r}
-compileFile = paste(aPath, 'LBT_compiled-data.csv', sep = '/')
+compileFile = paste('data', 'LBT_compiled-data.csv', sep = '/')
 write.csv(all_dat_breaks, compileFile, row.names = FALSE)
 ```
 
