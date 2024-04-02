@@ -907,7 +907,7 @@ ggplot(sum_rts, aes(BLOCK, RT_med, group = TONE, colour = TONE)) +
             size = 1, position = position_dodge(.2)) +
   scale_colour_manual(values = c('grey70', 'grey20')) +
   ylim(1.4, 1.8) +
-  labs(x = '', y = 'Reaction time (sec)') +
+  labs(x = '', y = 'Response time (sec)') +
   theme_bw() +
   theme(legend.title = element_blank(),
         legend.position = 'right',
